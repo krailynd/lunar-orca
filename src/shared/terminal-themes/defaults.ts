@@ -53,5 +53,30 @@ export const DEFAULT_TERMINAL_THEMES: TerminalThemeMap = {
     brightMagenta: '#ad7fa8',
     brightCyan: '#034b50',
     brightWhite: '#3d3d3d'
+  },
+
+  'Osaka Jade Neon': {
+    background: '#0c1512',
+    foreground: '#C1C497',
+    cursor: '#2DD5B7',
+    cursorAccent: '#0c1512',
+    selectionBackground: '#32473B',
+    selectionForeground: '#F7E8B2',
+    black: '#111c18',
+    red: '#FF5345',
+    green: '#549e6a',
+    yellow: '#459451',
+    blue: '#509475',
+    magenta: '#D2689C',
+    cyan: '#2DD5B7',
+    white: '#C1C497',
+    brightBlack: '#53685B',
+    brightRed: '#db9f9c',
+    brightGreen: '#63b07a',
+    brightYellow: '#E5C736',
+    brightBlue: '#ACD4CF',
+    brightMagenta: '#75bbb3',
+    brightCyan: '#8CD3CB',
+    brightWhite: '#F7E8B2'
   }
 }

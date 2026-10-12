@@ -577,3 +577,20 @@
   color: #a1a1aa;
   background: rgba(24, 24, 27, 0.85);
 }
+
+/* ── Osaka Jade Neon Glass Terminal Surfaces (Lunar Orca) ─────────────────── */
+
+.dark .terminal-container,
+.dark .pane-manager-root,
+.dark .pane,
+.dark .pane-split {
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(45, 213, 183, 0.07) 0%,
+    rgba(9, 15, 13, 0.35) 100%
+  ) !important;
+}
+
+.dark .xterm-viewport {
+  background-color: transparent !important;
+}

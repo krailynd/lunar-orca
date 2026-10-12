@@ -94,6 +94,10 @@ export function createMainWindow(
   const blur = settings?.windowBackgroundBlur ?? false
   // Why: only Windows acrylic is ever visible; macOS vibrancy+transparent sat behind our opaque background yet
   // forced per-frame WindowServer alpha compositing (#8482). Applies at creation only, so it needs a restart.
+  const isLinux = process.platform === 'linux'
+  const opaqueBackgroundColor = nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff'
+  const windowBackgroundColor = isLinux ? '#00000000' : opaqueBackgroundColor
+
   const platformBlurOptions =
     blur && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' as const } : {}
 
@@ -109,7 +113,7 @@ export function createMainWindow(
     acceptFirstMouse: true,
     // Why: auto-hide the Windows/Linux menu bar to save a row (Alt reveals it); macOS uses the system menu bar anyway.
     autoHideMenuBar: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff',
+    backgroundColor: windowBackgroundColor,
     // Why: macOS 'hiddenInset' keeps native traffic lights in our custom titlebar; Windows 'hidden' removes the OS title bar so it doesn't double up.
     titleBarStyle:
       process.platform === 'darwin'
@@ -117,8 +121,8 @@ export function createMainWindow(
         : process.platform === 'win32'
           ? 'hidden'
           : undefined,
-    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own).
-    ...(process.platform === 'linux' ? { frame: false } : {}),
+    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own), and transparent:true enables Wayland/Hyprland alpha channel glass.
+    ...(process.platform === 'linux' ? { frame: false, transparent: true } : {}),
     // Why: initial position for 1x zoom; syncTrafficLightPosition() adjusts on zoom change.
     ...(process.platform === 'darwin'
       ? {

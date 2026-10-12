@@ -49,4 +49,12 @@ describe('the terminal colours a host configures', () => {
       selectTerminalTheme({ ...base, theme: 'light', terminalUseSeparateLightTheme: false }, true)
     ).toEqual({ mode: 'light', useLightVariant: false, themeName: 'Ghostty Default Style Dark' })
   })
+
+  it('includes the Osaka Jade Neon built-in theme in the catalog', () => {
+    const osaka = TERMINAL_THEME_CATALOG['Osaka Jade Neon']
+    expect(osaka).toBeDefined()
+    expect(osaka?.background).toBe('#0c1512')
+    expect(osaka?.foreground).toBe('#C1C497')
+    expect(osaka?.cursor).toBe('#2DD5B7')
+  })
 })
