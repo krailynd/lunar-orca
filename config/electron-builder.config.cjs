@@ -189,7 +189,7 @@ const windowsRuntimeResources = existsSync(
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Orca',
+  productName: 'Lunar Orca',
   protocols: [{ name: 'Orca', schemes: ['orca'] }],
   toolsets: { appimage: '1.0.3' },
   ...(devChannelBuildVersion
@@ -738,7 +738,12 @@ function stampPackagedCliVersion(resourcesDir, version) {
   if (!existsSync(packageJsonPath)) {
     throw new Error(`Missing unpacked CLI package boundary: ${packageJsonPath}`)
   }
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  let packageJson
+  try {
+    packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  } catch (error) {
+    throw new Error(`Invalid unpacked CLI package.json at ${packageJsonPath}: ${error.message}`)
+  }
   writeFileSync(packageJsonPath, `${JSON.stringify({ ...packageJson, version }, null, 2)}\n`)
 }
 
