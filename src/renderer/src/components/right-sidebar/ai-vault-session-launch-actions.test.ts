@@ -165,7 +165,8 @@ describe('Resume in New Native Chat launch', () => {
     ['codex', 'codex'],
     ['opencode', 'opencode'],
     // OpenCode 2.x lists its conversations under its own row agent; an OpenCode chat takes them.
-    ['opencode2', 'opencode']
+    ['opencode2', 'opencode'],
+    ['pi', 'pi']
   ] as const)('starts a %s row in a %s chat', (rowAgent, chatAgent) => {
     const row: AiVaultSession = { ...owned, agent: rowAgent, structuredSession: undefined }
 
@@ -180,7 +181,7 @@ describe('Resume in New Native Chat launch', () => {
   })
 
   it('starts nothing for an agent whose chats cannot take a conversation over', () => {
-    renderActions().handleResumeInNewChat({ ...owned, agent: 'pi' }, 'worktree-2')
+    renderActions().handleResumeInNewChat({ ...owned, agent: 'gemini' }, 'worktree-2')
 
     expect(mocks.resumeAiVaultSessionInNewChat).not.toHaveBeenCalled()
   })

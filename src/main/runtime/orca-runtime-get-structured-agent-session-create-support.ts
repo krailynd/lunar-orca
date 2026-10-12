@@ -262,7 +262,9 @@ export class OrcaRuntimeWithGetStructuredAgentSessionCreateSupport extends OrcaR
               providerHandle: {
                 transport: definition.handleTransport,
                 agent: definition.agent,
-                nativeId: input.resumeFrom.providerSessionId
+                nativeId: transcriptImport.handleNamesTranscript
+                  ? adoption.transcriptPath
+                  : input.resumeFrom.providerSessionId
               },
               transcriptPath: adoption.transcriptPath
             }

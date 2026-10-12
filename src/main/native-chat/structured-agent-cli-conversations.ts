@@ -27,6 +27,8 @@ export type StructuredAgentTranscriptImport = {
     providerSessionId: string
     accountHome: AgentSessionAccountHome
   }) => Promise<string | null>
+  /** The adopted chat's handle names the transcript's path, not the conversation id (Pi). */
+  handleNamesTranscript?: true
 }
 
 /** The import of an agent whose account is one directory, named by the chat's own variable. */
@@ -39,8 +41,10 @@ export function directoryTranscriptImport(directories: {
     providerSessionId: string
     accountHomePath: string
   }) => Promise<string | null>
+  handleNamesTranscript?: true
 }): StructuredAgentTranscriptImport {
   return {
+    ...(directories.handleNamesTranscript ? { handleNamesTranscript: true } : {}),
     accountHomeCandidates: ({ settings, selectedAccountHome }) =>
       isLegacyAgentSessionAccountHome(selectedAccountHome)
         ? directories

@@ -9,6 +9,7 @@ import { agentSessionRefusalError } from '../../shared/agent-session-wire-refusa
 import type { AgentSessionOperationRow } from '../../shared/agent-session-operation-ledger'
 import type {
   AgentSessionProviderHandle,
+  AgentSessionProviderHandleLink,
   StructuredAgentId
 } from '../../shared/agent-session-provider-handle'
 import type { AgentSessionLease, AgentSessionRecord } from '../../shared/agent-session-record'
@@ -41,6 +42,8 @@ export type CommittedStructuredAgentSessionAdoptionReplay = {
 export function findCommittedStructuredAgentSessionAdoptionReplay(input: {
   agent: StructuredAgentId
   providerSessionId: string
+  /** The Session History row id a link of the agent's handle chain shows as. */
+  rowSessionId: (link: AgentSessionProviderHandleLink) => string
   selfSessionId: string
   callerKey: string
   operationId: string
@@ -66,7 +69,7 @@ export function findCommittedStructuredAgentSessionAdoptionReplay(input: {
   ) {
     return null
   }
-  if (adopted.handle.nativeId !== input.providerSessionId) {
+  if (input.rowSessionId(adopted) !== input.providerSessionId) {
     return null
   }
   return { record, providerHandle: adopted.handle }

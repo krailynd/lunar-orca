@@ -25,8 +25,7 @@ import {
   NO_STRUCTURED_AGENTS,
   structuredAgentsDeclaringNothing
 } from './structured-agent-session-adapter-router-test-support'
-import { acpStructuredAgentDefinition } from '../../acp/acp-structured-agent-definitions'
-import { acpLaunchSpecFor } from '../../acp/acp-launch-specs'
+import { structuredAgentRuntimeRegistration } from '../../runtime/structured-agent-runtime-registrations'
 import { writeOpenCodeSqliteDatabase } from '../../ai-vault/session-scanner-opencode-sqlite-fixture'
 
 // The OpenCode reader's worker, run in process.
@@ -208,17 +207,35 @@ describe('adopting a provider conversation on create', () => {
         ])
         return path
       }
+    },
+    {
+      agent: 'pi',
+      accountHome: { variable: 'PI_CODING_AGENT_DIR', path: '/home/dev/.pi/agent' },
+      record: async (dir: string, text: string) => {
+        const path = join(dir, `2026-10-12T00-00-00-000Z_${THREAD}.jsonl`)
+        const records = [
+          { type: 'session', version: 3, id: THREAD, cwd: '/workspace' },
+          { type: 'message', id: 'rec-1', parentId: null, message: { role: 'user', content: text } }
+        ]
+        await writeFile(path, `${records.map((line) => JSON.stringify(line)).join('\n')}\n`)
+        return path
+      }
     }
   ] as const)(
     "seeds a $agent chat's chain with the session it adopts and imports that CLI's history",
     async ({ agent, accountHome, record }) => {
       root = await mkdtemp(join(tmpdir(), `orca-adopt-${agent}-`))
       const transcriptPath = await record(root, `ORCA-${agent}-ADOPT`)
-      const spec = acpLaunchSpecFor(agent)
-      if (!spec) {
+      const definition = structuredAgentRuntimeRegistration(agent)?.definition
+      if (!definition) {
         throw new Error(`this build registers no ${agent} chats`)
       }
-      const handle = { transport: 'acp', agent, nativeId: THREAD }
+      // A Pi chat's handle names its session file; the others name the conversation id.
+      const handle = {
+        transport: definition.handleTransport,
+        agent,
+        nativeId: agent === 'pi' ? transcriptPath : THREAD
+      }
       const sessionAdapter = adapter()
       vi.mocked(sessionAdapter.acquire).mockImplementation(async ({ fence, spawnToken }) => ({
         process: { hostId: 'local', pid: 4242, processStartTimeMs: NOW, spawnToken },
@@ -241,7 +258,7 @@ describe('adopting a provider conversation on create', () => {
           accountHome,
           adopt: { providerHandle: handle, transcriptPath }
         }),
-        structuredAgentsDeclaringNothing([acpStructuredAgentDefinition(spec)])
+        structuredAgentsDeclaringNothing([definition])
       )
 
       expect(result.ok && JSON.stringify(result.value.page.items)).toContain(`ORCA-${agent}-ADOPT`)

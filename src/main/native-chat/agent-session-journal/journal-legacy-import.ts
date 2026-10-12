@@ -89,7 +89,9 @@ export async function prepareLegacyTranscriptImport(input: {
 }): Promise<{ ok: true; items: JournalReplacementItem[] } | { ok: false; error: string }> {
   const options = input.options ?? {}
   const limits = options.limits ?? DEFAULT_JOURNAL_PAYLOAD_LIMITS
-  const transcriptAgent = resolveNativeChatTranscriptAgent(input.agent)
+  // OMP is a Pi fork that kept Pi's session format, so OMP's decoder reads Pi's sessions too.
+  const transcriptAgent =
+    input.agent === 'pi' ? 'omp' : resolveNativeChatTranscriptAgent(input.agent)
   if (!transcriptAgent) {
     return { ok: false, error: `Unsupported agent for journal import: ${input.agent}` }
   }
