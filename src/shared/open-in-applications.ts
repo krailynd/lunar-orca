@@ -2,6 +2,7 @@ import type { OpenInApplication } from './ui-chrome-types'
 
 export const OPEN_IN_APPLICATIONS_MAX = 8
 export const DEFAULT_OPEN_IN_APPLICATIONS: OpenInApplication[] = [
+  { id: 'zed', label: 'Zed', command: 'zed' },
   { id: 'vscode', label: 'VS Code', command: 'code' }
 ]
 
