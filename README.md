@@ -1,8 +1,11 @@
-<h1 align="center">
-  <a href="https://onOrca.dev"><img src="resources/build/icon.png" alt="Orca" width="64" valign="middle" /></a> Orca
-</h1>
+# Lunar Orca
 
 <p align="center">
+  <a href="https://onOrca.dev"><img src="resources/build/icon.png" alt="Lunar Orca" width="64" valign="middle" /></a>
+</p>
+
+<p align="center">
+  [![Fork of stablyai/orca (MIT)](https://img.shields.io/badge/fork%20of-stablyai%2Forca%20(MIT)-2DD5B7?style=flat-square)](https://github.com/stablyai/orca)
   <a href="https://github.com/stablyai/orca"><img src="https://img.shields.io/github/stars/stablyai/orca?style=flat&amp;label=%E2%98%85&amp;color=08C" alt="GitHub stars" /></a>
   <a href="https://github.com/stablyai/orca/releases"><img src="docs/assets/readme-downloads.svg" alt="Total downloads across all releases" /></a>
   <img src="https://img.shields.io/badge/license-MIT-08C?style=flat" alt="License: MIT" />
@@ -10,6 +13,10 @@
   <a href="https://x.com/orca_build"><img src="https://img.shields.io/badge/X-000000?logo=x&logoColor=white" alt="Follow Orca on X" /></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-4493F8?style=flat-square" alt="Supported platforms: macOS, Windows, and Linux" />
 </p>
+
+> **Upstream Attribution & Fork Notice**
+> **Modified by Krailynd / Lunar Orca (2026).**
+> **Lunar Orca** is a customized desktop fork of [**Orca**](https://github.com/stablyai/orca), originally created by **Lovecast Inc. (Stably AI)** and distributed under the [MIT License](LICENSE). This fork introduces the **Osaka Jade Neon Glass** aesthetic, native Linux Wayland alpha transparency, and custom workflow enhancements while preserving 100% compatibility with upstream protocols, daemon (`orcad`), and the official Orca Mobile Companion app. See [NOTICE](NOTICE) for attribution details.
 
 <p align="center">
   <sub><a href="docs/readme/README.zh-CN.md">中文</a> · <a href="docs/readme/README.ja.md">日本語</a> · <a href="docs/readme/README.ko.md">한국어</a> · <a href="docs/readme/README.es.md">Español</a> · <a href="docs/readme/README.fr.md">Français</a> · <a href="docs/readme/README.pt.md">Português</a></sub>
