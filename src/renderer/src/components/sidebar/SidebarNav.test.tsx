@@ -13,6 +13,7 @@ import { PSEUDO_LOCALIZATION_LOCALE } from '../../i18n/pseudo-localization'
 
 const mocks = vi.hoisted(() => ({
   state: {} as Record<string, unknown>,
+  openHomePage: vi.fn(),
   openTaskPage: vi.fn(),
   openAutomationsPage: vi.fn(),
   openActivityPage: vi.fn(),
@@ -126,6 +127,7 @@ function setSidebarState({
     settings,
     repos,
     activeView: 'worktrees',
+    openHomePage: mocks.openHomePage,
     openTaskPage: mocks.openTaskPage,
     openAutomationsPage: mocks.openAutomationsPage,
     openActivityPage: mocks.openActivityPage,

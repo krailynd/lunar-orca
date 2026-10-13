@@ -1,4 +1,6 @@
 import type React from 'react'
+import { Globe } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import PaletteFilterMenu from '@/components/cmd-j/PaletteFilterMenu'
@@ -61,12 +63,48 @@ export function WorktreeJumpPaletteSurface({
         onValueChange={controller.emojiInput.handleValueChange}
         onClick={(event) => controller.emojiInput.syncCursor(event.currentTarget)}
         onSelect={(event) => controller.emojiInput.syncCursor(event.currentTarget)}
-        onKeyDown={(event) => controller.emojiInput.handleKeyDown(event)}
+        onKeyDown={(event) => {
+          if (controller.emojiInput.handleKeyDown(event)) {
+            return
+          }
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+            const trimmedQuery = controller.query.trim()
+            if (trimmedQuery && event.shiftKey) {
+              event.preventDefault()
+              event.stopPropagation()
+              controller.handleWebSearch(trimmedQuery)
+            }
+          }
+        }}
         wrapperClassName="mx-3 mt-3 rounded-lg border border-border/55 bg-muted/28 px-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
         iconClassName="mr-2.5 h-4 w-4 text-muted-foreground/60"
         className="h-12 min-w-0 flex-1"
         trailing={
-          <div ref={controller.setDialogElementFromNode} className="shrink-0">
+          <div
+            ref={controller.setDialogElementFromNode}
+            className="flex shrink-0 items-center gap-1.5"
+          >
+            <Button
+              type="button"
+              variant={controller.query.trim() ? 'secondary' : 'outline'}
+              size="xs"
+              disabled={!controller.query.trim()}
+              onClick={() => controller.handleWebSearch(controller.query)}
+              aria-label={translate(
+                'worktreeJumpPalette.webSearch.trigger',
+                'Buscar en el navegador'
+              )}
+              title={translate(
+                'worktreeJumpPalette.webSearch.tooltip',
+                'Buscar en el navegador interno (Shift+Enter)'
+              )}
+              className="ml-2"
+            >
+              <Globe className="size-3.5" aria-hidden="true" />
+              <span>
+                {translate('worktreeJumpPalette.webSearch.label', 'Buscar en el navegador')}
+              </span>
+            </Button>
             <PaletteFilterMenu
               model={controller.filterModel}
               filter={controller.filter}
@@ -146,6 +184,8 @@ export function WorktreeJumpPaletteSurface({
           <span>{translate('auto.components.WorktreeJumpPalette.ac037cfac2', 'Move')}</span>
           <FooterKey>{translate('worktreeJumpPalette.filter.tabKey', 'Tab')}</FooterKey>
           <span>{translate('worktreeJumpPalette.filter.label', 'Filter')}</span>
+          <FooterKey>Shift+Enter</FooterKey>
+          <span>{translate('worktreeJumpPalette.webSearch.footerLabel', 'Navegador')}</span>
         </div>
       </div>
       <div aria-live="polite" className="sr-only">

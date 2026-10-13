@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpen, CalendarClock, EyeOff, Files, Search, Smartphone } from 'lucide-react'
+import { BookOpen, CalendarClock, EyeOff, Files, Home, Search, Smartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -57,6 +57,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const openMobilePage = useAppStore((s) => s.openMobilePage)
   const openArtifactsPage = useAppStore((s) => s.openArtifactsPage)
   const openSkillsPage = useAppStore((s) => s.openSkillsPage)
+  const openHomePage = useAppStore((s) => s.openHomePage)
   const openModal = useAppStore((s) => s.openModal)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const activeView = useAppStore((s) => s.activeView)
@@ -65,6 +66,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const showMobileButton = useAppStore((s) => shouldShowMobileButton(s.settings))
   const showArtifactsButton = useAppStore((s) => shouldShowArtifactsButton(s.settings))
   const showSkillsButton = useAppStore((s) => shouldShowSkillsButton(s.settings))
+  const homeActive = activeView === 'home'
   const automationsActive = activeView === 'automations'
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
@@ -116,6 +118,26 @@ const SidebarNav = React.memo(function SidebarNav() {
             />
           ))}
         </span>
+      </button>
+      <button
+        type="button"
+        onClick={openHomePage}
+        aria-current={homeActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          homeActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
+            : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
+        )}
+      >
+        <Home
+          className={cn(
+            'size-4 shrink-0',
+            homeActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+          )}
+          strokeWidth={homeActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1 font-medium">Home</span>
       </button>
       <SetupGuideSidebarEntry />
       <SidebarTaskNavButton />

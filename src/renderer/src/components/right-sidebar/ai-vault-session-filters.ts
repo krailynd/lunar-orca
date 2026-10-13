@@ -51,7 +51,18 @@ export function useAiVaultPanelSessions(
   const filteredSessions = useMemo(
     () =>
       searching
-        ? sessions
+        ? sessions.filter((session) => {
+            if (!agents.includes(session.agent)) {
+              return false
+            }
+            if (scope === 'project') {
+              if (!activeProjectKey) {
+                return false
+              }
+              return sessionProjectById?.get(session.id)?.key === activeProjectKey
+            }
+            return true
+          })
         : filterAiVaultSessions(sessions, {
             query,
             agents,

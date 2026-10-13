@@ -16,6 +16,7 @@ type AiVaultPanelHeaderProps = {
   hasScanResult: boolean
   activeWorktreePath: string | null
   activeProjectKey: string | null
+  activeProjectLabel?: string | null
   scope: AiVaultScope
   executionHostScope: ExecutionHostScope
   hostScopeOptions: readonly AiVaultHostScopeOption[]
@@ -45,6 +46,7 @@ export function AiVaultPanelHeader({
   hasScanResult,
   activeWorktreePath,
   activeProjectKey,
+  activeProjectLabel = null,
   scope,
   executionHostScope,
   hostScopeOptions,
@@ -76,17 +78,27 @@ export function AiVaultPanelHeader({
     <div className="shrink-0 border-b border-sidebar-border px-2.5 py-2">
       <div className="flex items-center gap-1.5">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-foreground">
-            {/* Why: below 300px the header competes with fixed controls, so compact copy prevents overlap. */}
-            <span className="@max-[300px]/ai-vault:hidden">
-              {translate(
-                'auto.components.right.sidebar.AiVaultPanel.sessionHistory',
-                'Agent Session History'
-              )}
-            </span>
-            <span className="hidden @max-[300px]/ai-vault:inline">
-              {translate('auto.components.right.sidebar.AiVaultPanel.agents', 'Agents')}
-            </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="truncate text-xs font-semibold text-foreground">
+              {/* Why: below 300px the header competes with fixed controls, so compact copy prevents overlap. */}
+              <span className="@max-[300px]/ai-vault:hidden">
+                {translate(
+                  'auto.components.right.sidebar.AiVaultPanel.sessionHistory',
+                  'Agent Session History'
+                )}
+              </span>
+              <span className="hidden @max-[300px]/ai-vault:inline">
+                {translate('auto.components.right.sidebar.AiVaultPanel.agents', 'Agents')}
+              </span>
+            </div>
+            {activeProjectLabel ? (
+              <span
+                className="shrink-0 truncate max-w-[140px] rounded border border-workspace-status-review/35 bg-workspace-status-review/10 px-1.5 py-0.5 text-[10px] font-medium text-status-success"
+                title={`Proyecto: ${activeProjectLabel}`}
+              >
+                {`[Proyecto: ${activeProjectLabel}]`}
+              </span>
+            ) : null}
           </div>
           <div className="truncate text-[11px] text-muted-foreground">
             {searching || hasScanResult

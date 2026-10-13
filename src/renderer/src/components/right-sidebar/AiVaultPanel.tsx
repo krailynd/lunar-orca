@@ -145,6 +145,10 @@ export default function AiVaultPanel(): React.JSX.Element {
     activeWorktreePath
   })
   const projectLabelByKey = projectScopeContext.projectLabelByKey
+  const activeProjectLabel =
+    (activeProjectKey ? projectLabelByKey.get(activeProjectKey) : null) ??
+    activeRepo?.displayName ??
+    null
   // Sent to the scanner so scoped views surface sessions older than the global cap.
   const scopePaths = useMemo(
     () =>
@@ -303,6 +307,7 @@ export default function AiVaultPanel(): React.JSX.Element {
         hasScanResult={Boolean(scanResult)}
         activeWorktreePath={activeWorktreePath}
         activeProjectKey={activeProjectKey}
+        activeProjectLabel={activeProjectLabel}
         scope={scope}
         executionHostScope={executionHostScope}
         hostScopeOptions={hostScopeOptions}
@@ -376,29 +381,27 @@ export default function AiVaultPanel(): React.JSX.Element {
             onContinueInNewSession={launchActions.handleContinueInNewSession}
             onResumeInNewChat={launchActions.handleResumeInNewChat}
             onResumeInNewCli={launchActions.handleResumeInNewCli}
-            onCopyResume={(session, worktreeId) =>
-              void launchActions.copyResumeCommand(session, worktreeId)
-            }
-            onCopyId={(session) =>
+            onCopyResume={(s, wtId) => void launchActions.copyResumeCommand(s, wtId)}
+            onCopyId={(s) =>
               void copyText(
-                session.sessionId,
+                s.sessionId,
                 translate('auto.components.right.sidebar.AiVaultPanel.sessionId', 'Session ID')
               )
             }
-            onCopyPath={(session) =>
+            onCopyPath={(s) =>
               void copyText(
-                session.filePath,
+                s.filePath,
                 translate('auto.components.right.sidebar.AiVaultPanel.logPath', 'Log path')
               )
             }
-            onOpenLog={(session) => void openAiVaultSessionLogInOrca(session)}
-            onRevealLog={(session) => void window.api.shell.openPath(session.filePath)}
-            onOpenCwd={(session) => {
-              if (session.cwd) {
-                void window.api.shell.openPath(session.cwd)
+            onOpenLog={(s) => void openAiVaultSessionLogInOrca(s)}
+            onRevealLog={(s) => void window.api.shell.openPath(s.filePath)}
+            onOpenCwd={(s) => {
+              if (s.cwd) {
+                void window.api.shell.openPath(s.cwd)
               }
             }}
-            onRequestDelete={(session) => void requestDelete(session)}
+            onRequestDelete={(s) => void requestDelete(s)}
           />
         )}
         {!searching && (
