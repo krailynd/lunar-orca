@@ -21,38 +21,47 @@ import {
 } from '@/lib/worktree-activation'
 import { HARNESS_CATEGORIES, formatRelativeTime } from './home-page-types'
 import { HomePageSessionCards } from './HomePageSessionCards'
+import { HomePageLocalTasksSection, formatLocalTaskColumnLabel } from './HomePageLocalTasksSection'
+import {
+  addLocalTask,
+  moveLocalTaskColumn,
+  normalizeLocalAgentId,
+  useLocalProjectTasks,
+  type LocalProjectTask,
+  type LocalTaskColumnId,
+  type LocalTaskPriority
+} from '@/components/task-page/local-tasks-store'
+import {
+  TASK_DISPATCH_AGENTS,
+  buildLunarOrcaMultiAgentDispatchPrompt
+} from '@/components/task-page/task-kanban-defs'
+import type { TuiAgent } from '../../../../shared/tui-agent'
 
 export default function HomePage(): React.JSX.Element {
   const repos = useAppStore((s) => s.repos)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
   const folderWorkspaces = useAppStore((s) => s.folderWorkspaces)
   const openModal = useAppStore((s) => s.openModal)
+  const openTaskPage = useAppStore((s) => s.openTaskPage)
+  const { tasks: localTasks } = useLocalProjectTasks()
 
   const [sessions, setSessions] = useState<AiVaultSession[]>([])
   const [loadingSessions, setLoadingSessions] = useState(false)
-  const [activeCategory, setActiveCategory] = useState<string>('all')
+  const [activeCategory, setActiveCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [gitRecentChanges, setGitRecentChanges] = useState<
-    {
-      repoName: string
-      commitHash?: string
-      message: string
-      author?: string
-      date: string
-    }[]
+    { repoName: string; commitHash?: string; message: string; author?: string; date: string }[]
   >([])
 
   const loadSessions = useCallback(async () => {
     try {
       setLoadingSessions(true)
-      if (window.api?.aiVault?.listSessions) {
-        const result = await window.api.aiVault.listSessions({
-          limit: 200,
-          executionHostScope: 'all'
-        })
-        if (result && Array.isArray(result.sessions)) {
-          setSessions(result.sessions)
-        }
+      const result = await window.api?.aiVault?.listSessions?.({
+        limit: 200,
+        executionHostScope: 'all'
+      })
+      if (result && Array.isArray(result.sessions)) {
+        setSessions(result.sessions)
       }
     } catch (err) {
       console.error('Failed to load agent sessions:', err)
@@ -62,7 +71,7 @@ export default function HomePage(): React.JSX.Element {
   }, [])
 
   const loadGitActivity = useCallback(async () => {
-    if (!window.api?.git?.history || !repos || repos.length === 0) {
+    if (!window.api?.git?.history || !repos?.length) {
       return
     }
     try {
@@ -73,25 +82,19 @@ export default function HomePage(): React.JSX.Element {
         author?: string
         date: string
       }[] = []
-
       for (const repo of repos.slice(0, 5)) {
         try {
-          const res = await window.api.git.history({
-            worktreePath: repo.path,
-            limit: 2
-          })
-          if (res?.items) {
-            for (const item of res.items) {
-              allChanges.push({
-                repoName: repo.displayName || 'Repo',
-                commitHash: item.id?.slice(0, 7),
-                message: item.subject || item.message?.split('\n')[0] || 'Commit',
-                author: item.author,
-                date: item.timestamp
-                  ? formatRelativeTime(new Date(item.timestamp).toISOString())
-                  : 'Reciente'
-              })
-            }
+          const res = await window.api.git.history({ worktreePath: repo.path, limit: 2 })
+          for (const item of res?.items ?? []) {
+            allChanges.push({
+              repoName: repo.displayName || 'Repo',
+              commitHash: item.id?.slice(0, 7),
+              message: item.subject || item.message?.split('\n')[0] || 'Commit',
+              author: item.author,
+              date: item.timestamp
+                ? formatRelativeTime(new Date(item.timestamp).toISOString())
+                : 'Reciente'
+            })
           }
         } catch {
           // ignore individual repo errors
@@ -109,61 +112,42 @@ export default function HomePage(): React.JSX.Element {
   }, [loadSessions, loadGitActivity])
 
   const totalWorktrees = useMemo(() => {
-    let count = 0
-    for (const list of Object.values(worktreesByRepo)) {
-      count += list.length
-    }
-    return count + (folderWorkspaces?.length ?? 0)
+    const wtCount = Object.values(worktreesByRepo).reduce((acc, list) => acc + list.length, 0)
+    return wtCount + (folderWorkspaces?.length ?? 0)
   }, [worktreesByRepo, folderWorkspaces])
 
   const filteredSessions = useMemo(() => {
-    let list = sessions
-    if (activeCategory !== 'all') {
-      const cat = HARNESS_CATEGORIES.find((c) => c.id === activeCategory)
-      if (cat) {
-        list = list.filter((s) => cat.agents.includes(s.agent))
-      }
+    const cat =
+      activeCategory !== 'all' ? HARNESS_CATEGORIES.find((c) => c.id === activeCategory) : null
+    const list = cat ? sessions.filter((s) => cat.agents.includes(s.agent)) : sessions
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) {
+      return list
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          s.agent.toLowerCase().includes(q) ||
-          (s.cwd && s.cwd.toLowerCase().includes(q)) ||
-          s.previewMessages.some((m) => m.text.toLowerCase().includes(q))
-      )
-    }
-    return list
+    return list.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.agent.toLowerCase().includes(q) ||
+        Boolean(s.cwd?.toLowerCase().includes(q)) ||
+        s.previewMessages.some((m) => m.text.toLowerCase().includes(q))
+    )
   }, [sessions, activeCategory, searchQuery])
 
   const handleOpenSession = useCallback(
     (session: AiVaultSession) => {
       const targetPath = session.cwd || session.filePath
-      let matchedWorktreeId: string | null = null
-
       if (targetPath) {
         for (const wtList of Object.values(worktreesByRepo)) {
-          for (const wt of wtList) {
-            if (targetPath.startsWith(wt.path) || wt.path.startsWith(targetPath)) {
-              matchedWorktreeId = wt.id
-              break
-            }
-          }
-          if (matchedWorktreeId) {
-            break
+          const wt = wtList.find(
+            (item) => targetPath.startsWith(item.path) || item.path.startsWith(targetPath)
+          )
+          if (wt) {
+            activateAndRevealWorktree(wt.id)
+            toast.success(`Abriendo workspace para sesión de ${session.agent.toUpperCase()}`)
+            return
           }
         }
-      }
-
-      if (matchedWorktreeId) {
-        activateAndRevealWorktree(matchedWorktreeId)
-        toast.success(`Abriendo workspace para sesión de ${session.agent.toUpperCase()}`)
-        return
-      }
-
-      if (folderWorkspaces && targetPath) {
-        const matchedFolder = folderWorkspaces.find(
+        const matchedFolder = folderWorkspaces?.find(
           (f) => targetPath.startsWith(f.folderPath) || f.folderPath.startsWith(targetPath)
         )
         if (matchedFolder) {
@@ -172,7 +156,6 @@ export default function HomePage(): React.JSX.Element {
           return
         }
       }
-
       openModal('new-workspace-composer', {
         initialPath: session.cwd || undefined,
         telemetrySource: 'home-session-jump'
@@ -180,6 +163,61 @@ export default function HomePage(): React.JSX.Element {
       toast.info(`Configurando nuevo workspace para la ruta: ${session.cwd || 'de la sesión'}`)
     },
     [worktreesByRepo, folderWorkspaces, openModal]
+  )
+
+  const handleAddQuickLocalTask = useCallback(
+    (input: {
+      title: string
+      projectId: string
+      projectLabel: string
+      projectPath?: string
+      priority: LocalTaskPriority
+    }) => {
+      const created = addLocalTask(input)
+      toast.success(`Tarea local agregada: ${created.title}`)
+    },
+    []
+  )
+
+  const handleToggleLocalTaskColumn = useCallback(
+    (task: LocalProjectTask, nextColumn: LocalTaskColumnId) => {
+      moveLocalTaskColumn(task.id, nextColumn)
+      toast.success(`Estado actualizado a ${formatLocalTaskColumnLabel(nextColumn)}`)
+    },
+    []
+  )
+
+  const handleDelegateLocalTaskToAgent = useCallback(
+    (task: LocalProjectTask, agentId: TuiAgent) => {
+      moveLocalTaskColumn(task.id, 'in-progress', normalizeLocalAgentId(agentId))
+      const agentMeta = TASK_DISPATCH_AGENTS.find((a) => a.id === agentId)
+      const resolvedRepoId =
+        task.projectId && task.projectId !== 'global' ? task.projectId : repos[0]?.id
+      const slug = task.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 32)
+      openModal('new-workspace-composer', {
+        prefilledName: slug ? `local-${slug}` : `local-task-${task.id.slice(-4)}`,
+        initialRepoId: resolvedRepoId,
+        initialAgentId: agentId,
+        initialWorkspaceStatus: 'in_progress',
+        initialNote: buildLunarOrcaMultiAgentDispatchPrompt({
+          agentId,
+          identifier: `LOCAL-${task.id.slice(-4).toUpperCase()}`,
+          title: task.title,
+          url: task.projectPath ?? `local://${task.projectLabel}/${task.id}`,
+          repoName: task.projectLabel || null,
+          columnLabel: 'In Progress'
+        }),
+        telemetrySource: 'home-local-task-dispatch'
+      })
+      toast.success(
+        `Delegando tarea a ${agentMeta?.shortLabel ?? agentId.toUpperCase()} en Worktree Composer`
+      )
+    },
+    [openModal, repos]
   )
 
   return (
@@ -194,7 +232,7 @@ export default function HomePage(): React.JSX.Element {
         <header className="relative flex flex-col items-center text-center gap-3 pt-4">
           <div className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
             <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 transition duration-500" />
-            <div className="relative size-14 rounded-2xl bg-card/80 border border-border/80 shadow-xl flex items-center justify-center p-2.5 backdrop-blur-md">
+            <div className="relative size-14 rounded-2xl bg-card/90 border border-border/60 shadow-xs flex items-center justify-center p-2.5 backdrop-blur-md">
               <img
                 src={logo}
                 alt="Lunar Orca"
@@ -212,23 +250,23 @@ export default function HomePage(): React.JSX.Element {
               Lunar Orca
             </h1>
             <p className="text-xs text-muted-foreground/80 max-w-md mt-0.5">
-              Panel central de desarrollo y explorador unificado de arneses de IA, historial y
+              Panel central de desarrollo y explorador unificado de arneses de IA, sesiones y
               actividad git.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 mt-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/60 border border-border/60 text-xs shadow-sm backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 mt-2">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl border border-border/60 bg-card/90 shadow-xs text-xs backdrop-blur-sm">
               <FolderGit2 className="size-3.5 text-workspace-status-review" />
               <span className="font-semibold">{repos.length}</span>
               <span className="text-muted-foreground">Proyectos</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/60 border border-border/60 text-xs shadow-sm backdrop-blur-sm">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl border border-border/60 bg-card/90 shadow-xs text-xs backdrop-blur-sm">
               <Layers className="size-3.5 text-status-success" />
               <span className="font-semibold">{totalWorktrees}</span>
               <span className="text-muted-foreground">Workspaces</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/60 border border-border/60 text-xs shadow-sm backdrop-blur-sm">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl border border-border/60 bg-card/90 shadow-xs text-xs backdrop-blur-sm">
               <Bot className="size-3.5 text-callout-important" />
               <span className="font-semibold">{sessions.length}</span>
               <span className="text-muted-foreground">Sesiones Registradas</span>
@@ -238,7 +276,7 @@ export default function HomePage(): React.JSX.Element {
               onClick={() =>
                 openModal('new-workspace-composer', { telemetrySource: 'home-header' })
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-workspace-status-review/15 hover:bg-workspace-status-review/25 border border-workspace-status-review/30 text-workspace-status-review text-xs font-medium transition-all duration-200 active:scale-95 shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-workspace-status-review/15 hover:bg-workspace-status-review/25 border border-workspace-status-review/30 text-workspace-status-review text-xs font-medium transition-all duration-200 active:scale-95 shadow-xs"
             >
               <Plus className="size-3.5" />
               Nuevo Workspace
@@ -259,42 +297,49 @@ export default function HomePage(): React.JSX.Element {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {gitRecentChanges.map((change) => {
-                const uniqueKey = `${change.repoName}-${change.commitHash ?? change.message}`
-                return (
-                  <div
-                    key={uniqueKey}
-                    className="flex items-start gap-2.5 p-2.5 rounded-xl bg-card/50 hover:bg-card/80 border border-border/50 hover:border-workspace-status-review/30 transition-all duration-200 shadow-sm group"
-                  >
-                    <div className="p-1.5 rounded-lg bg-workspace-status-review/10 text-workspace-status-review shrink-0 mt-0.5">
-                      <GitBranch className="size-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-semibold truncate group-hover:text-workspace-status-review transition-colors">
-                          {change.repoName}
+              {gitRecentChanges.map((change) => (
+                <div
+                  key={`${change.repoName}-${change.commitHash ?? change.message}`}
+                  className="flex items-start gap-2.5 p-3 rounded-2xl border border-border/60 bg-card/90 shadow-xs hover:border-workspace-status-review/35 transition-all duration-200 group"
+                >
+                  <div className="p-1.5 rounded-lg bg-workspace-status-review/10 text-workspace-status-review shrink-0 mt-0.5">
+                    <GitBranch className="size-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold truncate group-hover:text-workspace-status-review transition-colors">
+                        {change.repoName}
+                      </span>
+                      {change.commitHash ? (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground">
+                          {change.commitHash}
                         </span>
-                        {change.commitHash ? (
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-muted/70 text-muted-foreground">
-                            {change.commitHash}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-[11px] text-foreground/80 line-clamp-1 mt-0.5 font-normal">
-                        {change.message}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground/60">
-                        <span>{change.author}</span>
-                        <span>•</span>
-                        <span>{change.date}</span>
-                      </div>
+                      ) : null}
+                    </div>
+                    <p className="text-[11px] text-foreground/80 line-clamp-1 mt-0.5 font-normal">
+                      {change.message}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground/60">
+                      <span>{change.author}</span>
+                      <span>•</span>
+                      <span>{change.date}</span>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </section>
         )}
+
+        {/* Tareas Locales & Cronograma (Kanban / Gantt) */}
+        <HomePageLocalTasksSection
+          tasks={localTasks}
+          repos={repos}
+          onOpenTaskPage={() => openTaskPage()}
+          onAddQuickTask={handleAddQuickLocalTask}
+          onToggleTaskColumn={handleToggleLocalTaskColumn}
+          onDelegateTaskToAgent={handleDelegateLocalTaskToAgent}
+        />
 
         {/* Harness Categories & Session Explorer */}
         <section className="flex flex-col gap-4">
@@ -318,14 +363,14 @@ export default function HomePage(): React.JSX.Element {
                   placeholder="Buscar en sesiones..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 sm:w-60 h-8 pl-8 pr-3 text-xs rounded-lg bg-card/60 border border-border/60 focus:outline-none focus:border-workspace-status-review/50 focus:ring-1 focus:ring-workspace-status-review/30 transition-all placeholder:text-muted-foreground/50"
+                  className="w-48 sm:w-60 h-8 pl-8 pr-3 text-xs rounded-full bg-card/90 border border-border/60 shadow-xs focus:outline-none focus:border-workspace-status-review/50 focus:ring-1 focus:ring-workspace-status-review/30 transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => void loadSessions()}
                 disabled={loadingSessions}
-                className="size-8 rounded-lg bg-card/60 border border-border/60 flex items-center justify-center hover:bg-card/90 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+                className="size-8 rounded-full bg-card/90 border border-border/60 shadow-xs flex items-center justify-center hover:bg-accent/60 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
                 title="Actualizar sesiones"
               >
                 <RefreshCw
@@ -344,10 +389,10 @@ export default function HomePage(): React.JSX.Element {
               type="button"
               onClick={() => setActiveCategory('all')}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 duration-200',
+                'px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 duration-200 border',
                 activeCategory === 'all'
-                  ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
-                  : 'bg-card/50 text-muted-foreground hover:bg-card/80 hover:text-foreground border border-border/40'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xs font-semibold'
+                  : 'bg-card/90 text-muted-foreground hover:bg-accent/60 hover:text-foreground border-border/60 shadow-xs'
               )}
             >
               Todos ({sessions.length})
@@ -362,17 +407,17 @@ export default function HomePage(): React.JSX.Element {
                   type="button"
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 duration-200 border',
+                    'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 duration-200 border',
                     isActive
-                      ? 'bg-card border-border/80 text-foreground font-semibold shadow-sm'
-                      : 'bg-card/50 border-border/40 text-muted-foreground hover:bg-card/80 hover:text-foreground'
+                      ? 'bg-card border-border/80 text-foreground font-semibold shadow-xs'
+                      : 'bg-card/90 border-border/60 text-muted-foreground hover:bg-accent/60 hover:text-foreground shadow-xs'
                   )}
                 >
                   <Icon className={cn('size-3.5', cat.color)} />
                   <span>{cat.name}</span>
                   <span
                     className={cn(
-                      'px-1 py-0.2 rounded text-[10px] font-mono',
+                      'px-1.5 py-0.5 rounded-full text-[10px] font-mono',
                       cat.badgeBg,
                       cat.badgeText
                     )}
@@ -391,7 +436,7 @@ export default function HomePage(): React.JSX.Element {
               <p className="text-xs">Escaneando historial de sesiones...</p>
             </div>
           ) : filteredSessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2 rounded-2xl border border-dashed border-border/60 bg-card/20 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-16 gap-2 rounded-2xl border border-border/60 bg-card/90 shadow-xs text-muted-foreground">
               <Bot className="size-8 stroke-[1.25] text-muted-foreground/40" />
               <p className="text-xs font-medium">No se encontraron sesiones para este filtro</p>
               <button

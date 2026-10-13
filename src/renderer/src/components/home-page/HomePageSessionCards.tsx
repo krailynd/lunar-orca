@@ -69,7 +69,7 @@ export function HomePageSessionCards({
                   key={session.id}
                   onClick={() => onOpenSession(session)}
                   className={cn(
-                    'group relative flex flex-col justify-between p-3.5 rounded-2xl bg-card/60 hover:bg-card/90 border border-border/60 hover:border-workspace-status-review/40 shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 active:scale-[0.99]',
+                    'group relative flex flex-col justify-between p-3.5 rounded-2xl border border-border/60 bg-card/90 shadow-xs hover:bg-card hover:border-workspace-status-review/40 hover:shadow-md cursor-pointer transition-all duration-200 active:scale-[0.99]',
                     cat.borderGlow
                   )}
                   style={{
