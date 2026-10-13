@@ -31,11 +31,33 @@ Además, `claude`, `codex`, `opencode` y `pi` son ciudadanos de primer orden en 
 ## 3. Editores y Estética Visual Osaka Jade Neon
 
 - **Editor predeterminado**: Zed (`id: 'zed'`, `command: 'zed'`) agregado como primera opción en `DEFAULT_OPEN_IN_APPLICATIONS`, seguido de VS Code (`code`).
-- **Tema de terminal**: `Osaka Jade Neon` con opacidad de fondo de terminal `0.45` y `windowBackgroundBlur: true`.
+- **Tema de terminal y eliminación de lag**: `Osaka Jade Neon` con fondo sólido/nítido `#0c1512`, `terminalBackgroundOpacity: 0.88` y `windowBackgroundBlur: true`. Se eliminaron shaders costosos del viewport de `xterm` para garantizar latencia cero de renderizado, potenciando el contraste de texto y bordes neon estilo Osaka Jade.
 - **Tipografía**: `Iosevka Nerd Font Mono` a `12px` con ligaduras activas (`on`).
 - **Sidebar**: Modo `match-terminal` con tinte `#111c18` y opacidad `0.18`.
 - **Divisores**: Acento jade `#2DD5B7`.
 - **Regla Hyprland**: Ventana de clase `^orca$` con opacidad `0.94 0.88`, regla de apertura `animation = "windows, 1, 7, iosSpring, slide"` en `~/.config/hypr/looknfeel.lua`.
+
+---
+
+## 5. Mejoras de Experiencia Multi-Harness y Productividad (Bloques 1–4)
+
+### 5.1. Eliminación de Lag en Terminal y Contraste Osaka Jade (Bloque 1)
+- **Viewport de terminal nítido**: Fondo base `#0c1512` con `terminalBackgroundOpacity: 0.88`.
+- **Rendimiento xterm**: Desactivación de composiciones/shaders pesados en el viewport de `xterm` para eliminar caídas de frames al hacer scroll masivo o recibir salidas de agentes.
+- **Contraste visual**: Refuerzo de bordes y textos en paleta Osaka Jade neon (`#2DD5B7`, `#e6fff8`).
+
+### 5.2. Vista `Home` en Sidebar e Historial Multi-Harness (Bloque 2)
+- **Componente `HomePage.tsx`**: Nueva vista `Home` accesible directamente desde el Sidebar principal.
+- **Historial unificado de sesiones**: Soporte multi-harness para inspeccionar y reanudar sesiones de **`Pi`**, **`OpenCode`**, **`Hermes`**, **`Claude`**, **`Codex`** y **`Antigravity`**.
+
+### 5.3. Búsqueda Web en `Cmd+J` y Filtrado por Proyecto (Bloque 3)
+- **Paleta `Cmd+J` (`worktree-jump-palette-surface.tsx`)**: Botón explícito **`"Buscar en el navegador"`** acompañado del atajo rápido **`Shift+Enter`** para lanzar búsquedas web directas desde la paleta de salto.
+- **Filtrado estricto por proyecto en `Agent Session History`**: Las sesiones se filtran estrictamente según el repositorio/proyecto activo y exhiben el badge **`[Proyecto: <Nombre>]`** para evitar mezclar contextos entre distintos worktrees.
+
+### 5.4. Automations, Tasks Kanban y Multi-Agent Hub (Bloque 4)
+- **Plantillas Cron en `Automations`**: Presets listos para ejecutar tareas programadas con **`pi`**, **`hermes`** y **`opencode`**.
+- **Vista Kanban en `Tasks`**: Conmutador de visualización **`List | Kanban`** para gestionar tareas por columnas de estado.
+- **`Lunar Orca Multi-Agent Hub` en `WorkspaceBoard`**: Panel central de coordinación multi-agente con sincronización automática de estado de tareas (`syncTaskStatusFromWorkspaceBoard: true`).
 
 ---
 
