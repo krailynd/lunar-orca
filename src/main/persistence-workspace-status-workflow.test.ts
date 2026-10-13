@@ -132,7 +132,7 @@ describe('Store', () => {
     expect(store.getUI().sortBy).toBe('recent')
   })
 
-  it('defaults workspace board task status sync off and normalizes persisted values', async () => {
+  it('defaults workspace board task status sync on and normalizes persisted values', async () => {
     writeDataFile({
       schemaVersion: 1,
       repos: [],
@@ -144,6 +144,9 @@ describe('Store', () => {
     })
 
     const store = await createStore()
+    expect(store.getUI().syncTaskStatusFromWorkspaceBoard).toBe(true)
+
+    store.updateUI({ syncTaskStatusFromWorkspaceBoard: false })
     expect(store.getUI().syncTaskStatusFromWorkspaceBoard).toBe(false)
 
     store.updateUI({ syncTaskStatusFromWorkspaceBoard: true })

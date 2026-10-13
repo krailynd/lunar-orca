@@ -226,7 +226,7 @@ export function createUiPreferenceActions(set: UISliceSet, get: UISliceGet): Par
       set({ workspaceBoardColumnWidth: clamped })
     },
 
-    syncTaskStatusFromWorkspaceBoard: false,
+    syncTaskStatusFromWorkspaceBoard: true,
     setSyncTaskStatusFromWorkspaceBoard: (enabled) => {
       window.api.ui.set({ syncTaskStatusFromWorkspaceBoard: enabled }).catch(console.error)
       set({ syncTaskStatusFromWorkspaceBoard: enabled })

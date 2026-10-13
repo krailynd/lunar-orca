@@ -2,7 +2,7 @@ import type { TaskPageComposerActionsModel } from '../use-task-page-composer-act
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink, List, Columns3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { LinearScopeSelector } from '@/components/linear-scope-selector'
@@ -46,7 +46,9 @@ export function TaskPageSourceBar({
     setLinearConnectOpen,
     handleLinearWorkspaceChange,
     handleLinearTeamSelectionChange,
-    handleLinearScopeOpen
+    handleLinearScopeOpen,
+    taskPageViewMode,
+    setTaskPageViewMode
   } = model
   return (
     <div className="flex items-center justify-between gap-2">
@@ -226,6 +228,43 @@ export function TaskPageSourceBar({
           ) : null}
         </div>
       ) : null}
+      <div
+        className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 p-0.5"
+        role="group"
+        aria-label="Tasks view mode"
+        data-testid="task-page-view-mode-toggle"
+      >
+        <button
+          type="button"
+          onClick={() => setTaskPageViewMode('list')}
+          aria-pressed={taskPageViewMode === 'list'}
+          data-testid="task-page-view-mode-list"
+          className={cn(
+            'inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors',
+            taskPageViewMode === 'list'
+              ? 'border border-workspace-status-review/40 bg-workspace-status-review/15 text-git-graph-lane-4 shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <List className="size-3.5" />
+          <span>List</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTaskPageViewMode('kanban')}
+          aria-pressed={taskPageViewMode === 'kanban'}
+          data-testid="task-page-view-mode-kanban"
+          className={cn(
+            'inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors',
+            taskPageViewMode === 'kanban'
+              ? 'border border-workspace-status-review/40 bg-workspace-status-review/15 text-git-graph-lane-4 shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Columns3 className="size-3.5" />
+          <span>Kanban</span>
+        </button>
+      </div>
     </div>
   )
 }

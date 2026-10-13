@@ -256,6 +256,7 @@ export function buildDefaultSettings(args: {
     compactWorktreeCards: false,
     // Why: local desktop stays the default until the user picks a saved runtime environment.
     activeRuntimeEnvironmentId: null,
+    syncTaskStatusFromWorkspaceBoard: true,
     // Why: hydrate a stable empty shape so renderer optional-chained reads never hit undefined.
     githubProjects: {
       pinned: [],

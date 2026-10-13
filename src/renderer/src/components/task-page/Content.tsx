@@ -6,6 +6,7 @@ import { TaskPageGitHubList } from './github/List'
 import { TaskPageGitLabTodoList } from './gitlab/TodoList'
 import { TaskPageGitLabItemList } from './gitlab/ItemList'
 import { TaskPageJiraContent } from './jira/Content'
+import { TaskPageKanbanBoard } from './TaskKanbanBoard'
 export function TaskPageContent({
   model
 }: {
@@ -15,6 +16,7 @@ export function TaskPageContent({
     repoSelection,
     taskSource,
     githubMode,
+    taskPageViewMode,
     gitlabView,
     dialogInitialTab,
     dialogWorkItem,
@@ -23,8 +25,21 @@ export function TaskPageContent({
     setDialogWorkItem,
     handleDialogReviewRequestsChange,
     closeTaskDetailPage,
-    handleUseWorkItem
+    handleUseWorkItem,
+    selectedJiraIssue,
+    selectedLinearIssue,
+    selectedLinearProject,
+    selectedLinearCustomView
   } = model
+  const canRenderUnifiedKanban =
+    taskPageViewMode === 'kanban' &&
+    !dialogWorkItem &&
+    !selectedJiraIssue &&
+    !selectedLinearIssue &&
+    !selectedLinearProject &&
+    !selectedLinearCustomView &&
+    !(taskSource === 'github' && githubMode === 'project') &&
+    !(taskSource === 'gitlab' && gitlabView === 'todos')
   return taskSource === 'github' && dialogWorkItem ? (
     dialogWorkItem.type === 'pr' ? (
       <PullRequestPage
@@ -57,6 +72,8 @@ export function TaskPageContent({
         onClose={closeTaskDetailPage}
       />
     )
+  ) : canRenderUnifiedKanban ? (
+    <TaskPageKanbanBoard model={model} />
   ) : taskSource === 'github' && githubMode === 'project' ? (
     <div className="mt-3 flex min-h-0 min-w-0 max-h-full flex-col overflow-hidden rounded-md border border-border/50 bg-muted/50 shadow-sm">
       <ProjectViewWrapper selectedRepoIds={repoSelection} />

@@ -88,6 +88,7 @@ export function useAutomationEditorActions({
           preset: template.preset,
           time: template.time ?? baseDraft.time,
           dayOfWeek: template.dayOfWeek ?? baseDraft.dayOfWeek,
+          customSchedule: template.customSchedule ?? '',
           agentId: template.agentId ?? baseDraft.agentId,
           missedRunGraceMinutes: template.missedRunGraceMinutes ?? baseDraft.missedRunGraceMinutes
         }

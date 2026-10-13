@@ -11,6 +11,8 @@ type InspectableProps = {
   children?: React.ReactNode
   className?: string
   'aria-label'?: string
+  'aria-checked'?: boolean
+  'data-testid'?: string
   onClick?: () => void
 }
 
@@ -138,5 +140,34 @@ describe('WorkspaceKanbanDrawerHeader', () => {
       findElement(header, (props) => Boolean(props.className?.includes('rounded-full')))
     ).not.toBeNull()
     expect(findByType(header, WorkspaceKanbanSearchField)).not.toBeNull()
+  })
+
+  it('renders Lunar Orca Multi-Agent Hub badge, active agent count per column, and quick sync toggle', () => {
+    const onSyncChange = vi.fn()
+    const header = renderHeader(vi.fn(), {
+      activeAgentCountByStatus: new Map([['todo', 4]]),
+      syncTaskStatusFromWorkspaceBoard: true,
+      onSyncTaskStatusFromWorkspaceBoardChange: onSyncChange
+    })
+
+    const hubBadge = findElement(
+      header,
+      (props) => props['data-testid'] === 'workspace-board-multi-agent-hub-badge'
+    )
+    expect(hubBadge).not.toBeNull()
+
+    const countBadge = findElement(
+      header,
+      (props) => props['data-testid'] === 'workspace-board-column-agent-count-todo'
+    )
+    expect(countBadge).not.toBeNull()
+
+    const quickSyncToggle = findElement(
+      header,
+      (props) => props['data-testid'] === 'workspace-board-quick-sync-toggle'
+    )
+    expect(quickSyncToggle?.props['aria-checked']).toBe(true)
+    quickSyncToggle?.props.onClick?.()
+    expect(onSyncChange).toHaveBeenCalledWith(false)
   })
 })

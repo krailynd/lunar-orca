@@ -21,7 +21,9 @@ type ComposerSourceContextStateInput = Pick<
   | 'selectedRepoIsGit'
   | 'setInternalRepoId'
   | 'selectedWorkspaceTarget'
->
+> & {
+  initialNote?: string
+}
 
 import { useCallback, useMemo, useState } from 'react'
 import { getLinkedWorkItemProvider, type LinkedWorkItemSummary } from '@/lib/new-workspace'
@@ -44,6 +46,7 @@ export function useComposerSourceContextState(input: ComposerSourceContextStateI
     initialLinkedWorkItem,
     initialName,
     initialPrompt,
+    initialNote = '',
     initialTaskSourceContext,
     isProjectGroupTarget,
     newWorkspaceDraft,
@@ -79,7 +82,9 @@ export function useComposerSourceContextState(input: ComposerSourceContextStateI
     persistDraft ? (newWorkspaceDraft?.prompt ?? initialPrompt) : initialPrompt
   )
 
-  const [note, setNote] = useState<string>(persistDraft ? (newWorkspaceDraft?.note ?? '') : '')
+  const [note, setNote] = useState<string>(
+    persistDraft ? (newWorkspaceDraft?.note ?? initialNote) : initialNote
+  )
 
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>(
     persistDraft ? (newWorkspaceDraft?.attachments ?? []) : []

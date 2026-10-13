@@ -55,6 +55,7 @@ export function useTaskPageProviderState(model: TaskPageSourceAvailabilityModel)
   // Why: Project mode is a GitHub sub-tab — visible on the GitHub source, but actual entry is gated on a non-null activeProject.
   const projectModeVisible = taskSource === 'github'
   const [githubMode, setGithubMode] = useState<'items' | 'project'>('items')
+  const [taskPageViewMode, setTaskPageViewMode] = useState<'list' | 'kanban'>('list')
 
   // ── GitLab task-source state ──────────────────────────────────────
   // Why: parallel to Linear's slim per-source state — skips workItemsCache and cross-repo aggregation; fetches directly via window.api.gl for the primary repo.
@@ -99,76 +100,43 @@ export function useTaskPageProviderState(model: TaskPageSourceAvailabilityModel)
     }
     return gitlabItems
   }, [gitlabItems, gitlabView])
-  const nextModel = model as typeof model & {
-    taskSourceManuallyChangedRef: typeof taskSourceManuallyChangedRef
-    lastPageTaskSourceRef: typeof lastPageTaskSourceRef
-    taskResumeAppliedRef: typeof taskResumeAppliedRef
-    githubSearchPersistReadyRef: typeof githubSearchPersistReadyRef
-    linearSearchPersistReadyRef: typeof linearSearchPersistReadyRef
-    linearViewPersistReadyRef: typeof linearViewPersistReadyRef
-    jiraSearchPersistReadyRef: typeof jiraSearchPersistReadyRef
-    taskResumeApplied: typeof taskResumeApplied
-    setTaskResumeApplied: typeof setTaskResumeApplied
-    projectModeVisible: typeof projectModeVisible
-    githubMode: typeof githubMode
-    setGithubMode: typeof setGithubMode
-    gitlabFilter: typeof gitlabFilter
-    setGitlabFilter: typeof setGitlabFilter
-    gitlabItems: typeof gitlabItems
-    setGitlabItems: typeof setGitlabItems
-    gitlabLoading: typeof gitlabLoading
-    setGitlabLoading: typeof setGitlabLoading
-    gitlabError: typeof gitlabError
-    setGitlabError: typeof setGitlabError
-    gitlabRefreshNonce: typeof gitlabRefreshNonce
-    setGitlabRefreshNonce: typeof setGitlabRefreshNonce
-    gitlabDialogItem: typeof gitlabDialogItem
-    setGitlabDialogItem: typeof setGitlabDialogItem
-    gitlabView: typeof gitlabView
-    setGitlabView: typeof setGitlabView
-    gitlabTodos: typeof gitlabTodos
-    setGitlabTodos: typeof setGitlabTodos
-    gitlabTodosLoading: typeof gitlabTodosLoading
-    setGitlabTodosLoading: typeof setGitlabTodosLoading
-    gitlabEmptyState: typeof gitlabEmptyState
-    gitlabFilterIsValid: typeof gitlabFilterIsValid
-    activeGitlabFilter: typeof activeGitlabFilter
-    displayedGitLabItems: typeof displayedGitLabItems
-  }
-  nextModel.taskSourceManuallyChangedRef = taskSourceManuallyChangedRef
-  nextModel.lastPageTaskSourceRef = lastPageTaskSourceRef
-  nextModel.taskResumeAppliedRef = taskResumeAppliedRef
-  nextModel.githubSearchPersistReadyRef = githubSearchPersistReadyRef
-  nextModel.linearSearchPersistReadyRef = linearSearchPersistReadyRef
-  nextModel.linearViewPersistReadyRef = linearViewPersistReadyRef
-  nextModel.jiraSearchPersistReadyRef = jiraSearchPersistReadyRef
-  nextModel.taskResumeApplied = taskResumeApplied
-  nextModel.setTaskResumeApplied = setTaskResumeApplied
-  nextModel.projectModeVisible = projectModeVisible
-  nextModel.githubMode = githubMode
-  nextModel.setGithubMode = setGithubMode
-  nextModel.gitlabFilter = gitlabFilter
-  nextModel.setGitlabFilter = setGitlabFilter
-  nextModel.gitlabItems = gitlabItems
-  nextModel.setGitlabItems = setGitlabItems
-  nextModel.gitlabLoading = gitlabLoading
-  nextModel.setGitlabLoading = setGitlabLoading
-  nextModel.gitlabError = gitlabError
-  nextModel.setGitlabError = setGitlabError
-  nextModel.gitlabRefreshNonce = gitlabRefreshNonce
-  nextModel.setGitlabRefreshNonce = setGitlabRefreshNonce
-  nextModel.gitlabDialogItem = gitlabDialogItem
-  nextModel.setGitlabDialogItem = setGitlabDialogItem
-  nextModel.gitlabView = gitlabView
-  nextModel.setGitlabView = setGitlabView
-  nextModel.gitlabTodos = gitlabTodos
-  nextModel.setGitlabTodos = setGitlabTodos
-  nextModel.gitlabTodosLoading = gitlabTodosLoading
-  nextModel.setGitlabTodosLoading = setGitlabTodosLoading
-  nextModel.gitlabEmptyState = gitlabEmptyState
-  nextModel.gitlabFilterIsValid = gitlabFilterIsValid
-  nextModel.activeGitlabFilter = activeGitlabFilter
-  nextModel.displayedGitLabItems = displayedGitLabItems
-  return nextModel
+  return Object.assign(model, {
+    taskSourceManuallyChangedRef,
+    lastPageTaskSourceRef,
+    taskResumeAppliedRef,
+    githubSearchPersistReadyRef,
+    linearSearchPersistReadyRef,
+    linearViewPersistReadyRef,
+    jiraSearchPersistReadyRef,
+    taskResumeApplied,
+    setTaskResumeApplied,
+    projectModeVisible,
+    githubMode,
+    setGithubMode,
+    taskPageViewMode,
+    setTaskPageViewMode,
+    gitlabFilter,
+    setGitlabFilter,
+    gitlabItems,
+    setGitlabItems,
+    gitlabLoading,
+    setGitlabLoading,
+    gitlabError,
+    setGitlabError,
+    gitlabRefreshNonce,
+    setGitlabRefreshNonce,
+    gitlabDialogItem,
+    setGitlabDialogItem,
+    gitlabView,
+    setGitlabView,
+    gitlabTodos,
+    setGitlabTodos,
+    gitlabTodosLoading,
+    setGitlabTodosLoading,
+    gitlabEmptyState,
+    gitlabFilterIsValid,
+    activeGitlabFilter,
+    displayedGitLabItems
+  })
 }
 export type TaskPageProviderStateModel = ReturnType<typeof useTaskPageProviderState>

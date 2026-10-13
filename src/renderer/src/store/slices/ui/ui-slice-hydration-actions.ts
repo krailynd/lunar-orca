@@ -171,7 +171,7 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
           workspaceStatuses: normalizeWorkspaceStatuses(ui.workspaceStatuses),
           workspaceBoardOpacity: clampWorkspaceBoardOpacity(ui.workspaceBoardOpacity),
           workspaceBoardColumnWidth: clampWorkspaceBoardColumnWidth(ui.workspaceBoardColumnWidth),
-          syncTaskStatusFromWorkspaceBoard: ui.syncTaskStatusFromWorkspaceBoard === true,
+          syncTaskStatusFromWorkspaceBoard: ui.syncTaskStatusFromWorkspaceBoard !== false,
           statusBarItems: statusBarItemsWithGrok,
           statusBarVisible: ui.statusBarVisible ?? true,
           usagePercentageDisplay: normalizeUsagePercentageDisplay(ui.usagePercentageDisplay),

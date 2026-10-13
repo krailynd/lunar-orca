@@ -20,6 +20,7 @@ export type ComposerStateInput = {
   initialProjectGroupId?: string
   initialName?: string
   initialPrompt?: string
+  initialNote?: string
   initialLinkedWorkItem?: LinkedWorkItemSummary | null
   initialGitHubWorkItem?: GitHubWorkItem | null
   initialTaskSourceContext?: TaskSourceContext | null
@@ -42,6 +43,7 @@ export function useComposerTargetStore(options: ComposerStateInput, decisions: C
     initialEphemeralVmRecipeId,
     initialName = '',
     initialPrompt = '',
+    initialNote = '',
     initialLinkedWorkItem = null,
     initialGitHubWorkItem = null,
     initialTaskSourceContext = null,
@@ -158,6 +160,7 @@ export function useComposerTargetStore(options: ComposerStateInput, decisions: C
     initialEphemeralVmRecipeId,
     initialName,
     initialPrompt,
+    initialNote,
     initialLinkedWorkItem,
     initialGitHubWorkItem,
     initialTaskSourceContext,

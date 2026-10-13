@@ -55,7 +55,10 @@ export function getPersistedUI(
     workspaceStatuses: normalizeWorkspaceStatuses(state.ui?.workspaceStatuses),
     workspaceBoardOpacity: clampWorkspaceBoardOpacity(state.ui?.workspaceBoardOpacity),
     workspaceBoardColumnWidth: clampWorkspaceBoardColumnWidth(state.ui?.workspaceBoardColumnWidth),
-    syncTaskStatusFromWorkspaceBoard: state.ui?.syncTaskStatusFromWorkspaceBoard === true,
+    syncTaskStatusFromWorkspaceBoard:
+      typeof state.ui?.syncTaskStatusFromWorkspaceBoard === 'boolean'
+        ? state.ui.syncTaskStatusFromWorkspaceBoard
+        : true,
     usagePercentageDisplay: normalizeUsagePercentageDisplay(state.ui?.usagePercentageDisplay),
     statusBarUsageMode: normalizeStatusBarUsageMode(state.ui?.statusBarUsageMode),
     statusBarCompactChangeNoticeDismissed:

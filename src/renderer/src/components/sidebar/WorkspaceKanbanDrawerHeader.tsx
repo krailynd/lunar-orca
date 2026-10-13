@@ -1,7 +1,8 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { Bot, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 import type { WorkspaceStatusDefinition } from '../../../../shared/worktree/types'
 import SidebarFilter from './SidebarFilter'
 import WorkspaceKanbanSearchField from './WorkspaceKanbanSearchField'
@@ -18,6 +19,7 @@ type WorkspaceKanbanDrawerHeaderProps = {
   onQueryChange: (query: string) => void
   onClearQuery: () => void
   workspaceStatuses: readonly WorkspaceStatusDefinition[]
+  activeAgentCountByStatus?: ReadonlyMap<string, number>
   syncTaskStatusFromWorkspaceBoard: boolean
   onSyncTaskStatusFromWorkspaceBoardChange: (enabled: boolean) => void
   onRenameStatus: (statusId: string, label: string) => void
@@ -40,6 +42,7 @@ export default function WorkspaceKanbanDrawerHeader({
   onQueryChange,
   onClearQuery,
   workspaceStatuses,
+  activeAgentCountByStatus,
   syncTaskStatusFromWorkspaceBoard,
   onSyncTaskStatusFromWorkspaceBoardChange,
   onRenameStatus,
@@ -64,6 +67,13 @@ export default function WorkspaceKanbanDrawerHeader({
                 'Workspace board'
               )}
             </span>
+            <span
+              data-testid="workspace-board-multi-agent-hub-badge"
+              className="inline-flex items-center gap-1 rounded-full border border-workspace-status-review/35 bg-workspace-status-review/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-git-graph-lane-4"
+            >
+              <Bot className="size-3" />
+              Lunar Orca Multi-Agent Hub
+            </span>
             {selectedCount > 1 ? (
               <span className="rounded-full bg-worktree-sidebar-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {selectedCount}{' '}
@@ -84,6 +94,48 @@ export default function WorkspaceKanbanDrawerHeader({
             onClear={onClearQuery}
             onClose={onClose}
           />
+        </div>
+        <div
+          data-testid="workspace-board-multi-agent-status-bar"
+          className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground"
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            {workspaceStatuses.map((status) => {
+              const count = activeAgentCountByStatus?.get(status.id) ?? 0
+              return (
+                <span
+                  key={status.id}
+                  data-testid={`workspace-board-column-agent-count-${status.id}`}
+                  className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px]"
+                >
+                  <span className="font-medium text-foreground/85">{status.label}:</span>
+                  <span className="font-mono font-semibold text-git-graph-lane-4">{count}</span>
+                  <span>agents</span>
+                </span>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={syncTaskStatusFromWorkspaceBoard}
+            data-testid="workspace-board-quick-sync-toggle"
+            onClick={() =>
+              onSyncTaskStatusFromWorkspaceBoardChange(!syncTaskStatusFromWorkspaceBoard)
+            }
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors',
+              syncTaskStatusFromWorkspaceBoard
+                ? 'border-workspace-status-review/45 bg-workspace-status-review/15 text-git-graph-lane-4'
+                : 'border-border/60 bg-background/60 text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <RefreshCw className="size-2.5" />
+            <span>Sync Status with Tasks</span>
+            <span className="font-mono uppercase">
+              {syncTaskStatusFromWorkspaceBoard ? 'ON' : 'OFF'}
+            </span>
+          </button>
         </div>
         <SheetDescription className="sr-only">
           {translate(

@@ -131,7 +131,7 @@ export function useAutomationDraftEffects({
         preset: template.preset,
         time: template.time ?? current.time,
         dayOfWeek: template.dayOfWeek ?? current.dayOfWeek,
-        customSchedule: '',
+        customSchedule: template.customSchedule ?? '',
         agentId: template.agentId ?? current.agentId,
         missedRunGraceMinutes: template.missedRunGraceMinutes ?? current.missedRunGraceMinutes,
         scheduleWarning: null

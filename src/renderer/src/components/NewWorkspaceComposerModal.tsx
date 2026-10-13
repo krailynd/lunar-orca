@@ -36,6 +36,8 @@ const HostedAddRepoDialog = lazyWithRetry(() => import('@/components/sidebar/Add
 
 type ComposerModalData = {
   prefilledName?: string
+  initialNote?: string
+  initialAgentId?: TuiAgent
   initialRepoId?: string
   initialEphemeralVmRecipeId?: string
   initialProjectGroupId?: string
@@ -137,6 +139,7 @@ function QuickTabBody({
     // Why: the modal is quick-create only now, so prompt-prefill state is
     // intentionally ignored even if older callers still send it.
     initialPrompt: '',
+    initialNote: modalData.initialNote ?? '',
     initialLinkedWorkItem: modalData.linkedWorkItem ?? null,
     initialGitHubWorkItem: modalData.initialGitHubWorkItem ?? null,
     initialTaskSourceContext: modalData.taskSourceContext ?? null,
@@ -164,7 +167,7 @@ function QuickTabBody({
   // during render keeps the selection in sync with the detected set without
   // triggering an extra commit.
   const [quickAgentOverride, setQuickAgentOverride] = useState<TuiAgent | null | undefined>(
-    undefined
+    modalData.initialAgentId ?? undefined
   )
   const preferredQuickAgent = useMemo<TuiAgent | null>(() => {
     const pref = settings?.defaultTuiAgent

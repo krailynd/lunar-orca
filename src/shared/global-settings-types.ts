@@ -304,6 +304,8 @@ export type GlobalSettings = NativeChatGlobalSettings & {
   /** Bot-marked comment-author logins (stored lowercased); escape hatch for review bots on regular accounts that defeat provider metadata/heuristics. */
   prBotAuthorOverrides: string[]
   notifications: NotificationSettings
+  /** Sync Workspace Board card status changes to linked Tasks/Issues by default. */
+  syncTaskStatusFromWorkspaceBoard?: boolean
   /** Countdown after a Claude agent goes idle showing time left before the prompt cache expires. */
   promptCacheTimerEnabled: boolean
   /** Prompt-cache TTL (ms); only 300000 (5 min standard) or 3600000 (1 hr, extended-TTL plans). */

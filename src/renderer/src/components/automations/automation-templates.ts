@@ -13,11 +13,100 @@ export type AutomationTemplate = {
   preset: AutomationSchedulePreset
   time?: string
   dayOfWeek?: string
+  customSchedule?: string
   agentId?: TuiAgent
+  createTarget?: 'orca' | 'hermes'
   missedRunGraceMinutes?: string
 }
 
 export const getAutomationTemplates = createLocalizedCatalog((): AutomationTemplate[] => [
+  {
+    id: 'pi-odd-daily-sync',
+    category: translate(
+      'auto.components.automations.automation.templates.piOddDaily.category',
+      'Pi Harness · Cron Daily'
+    ),
+    label: translate(
+      'auto.components.automations.automation.templates.piOddDaily.label',
+      'Pi ODD Daily Sync & Engram Audit'
+    ),
+    description: translate(
+      'auto.components.automations.automation.templates.piOddDaily.description',
+      'Runs pi agent daily via cron (0 9 * * *) to audit ODD tasks, verify ledger, and sync Engram memory.'
+    ),
+    name: translate(
+      'auto.components.automations.automation.templates.piOddDaily.name',
+      'Pi ODD Daily Sync & Engram Audit'
+    ),
+    prompt: translate(
+      'auto.components.automations.automation.templates.piOddDaily.prompt',
+      'Audit active ODD tasks in odd/tasks/, verify odd/ledger-reads.jsonl integrity, reconcile unfinished work items with the Lunar Orca Workspace Board, and sync verified architectural decisions to Engram memory.'
+    ),
+    preset: 'daily',
+    time: '09:00',
+    customSchedule: '0 9 * * *',
+    agentId: 'pi',
+    createTarget: 'orca',
+    missedRunGraceMinutes: '360'
+  },
+  {
+    id: 'hermes-remote-intel-recon',
+    category: translate(
+      'auto.components.automations.automation.templates.hermesRecon.category',
+      'Hermes Harness · Cron 6h'
+    ),
+    label: translate(
+      'auto.components.automations.automation.templates.hermesRecon.label',
+      'Hermes Remote Intelligence & Security Recon'
+    ),
+    description: translate(
+      'auto.components.automations.automation.templates.hermesRecon.description',
+      'Connects with hermes / SahaCloud every 6h (0 */6 * * *) to gather project updates and passive security checks.'
+    ),
+    name: translate(
+      'auto.components.automations.automation.templates.hermesRecon.name',
+      'Hermes Remote Intelligence & Security Recon'
+    ),
+    prompt: translate(
+      'auto.components.automations.automation.templates.hermesRecon.prompt',
+      'Connect with Hermes / SahaCloud to gather project updates, service health telemetry, and passive security checks within the authorized whitelist. Summarize actionable findings for the Lunar Orca team.'
+    ),
+    preset: 'custom',
+    time: '06:00',
+    customSchedule: '0 */6 * * *',
+    agentId: 'hermes',
+    createTarget: 'orca',
+    missedRunGraceMinutes: '180'
+  },
+  {
+    id: 'opencode-multi-harness-triage',
+    category: translate(
+      'auto.components.automations.automation.templates.opencodeTriage.category',
+      'OpenCode Harness · Cron Hourly'
+    ),
+    label: translate(
+      'auto.components.automations.automation.templates.opencodeTriage.label',
+      'OpenCode & Multi-Harness PR / Issue Triage'
+    ),
+    description: translate(
+      'auto.components.automations.automation.templates.opencodeTriage.description',
+      'Hourly cron (0 * * * *) that scans open issues, syncs Kanban tasks, and prepares isolated worktree fixes.'
+    ),
+    name: translate(
+      'auto.components.automations.automation.templates.opencodeTriage.name',
+      'OpenCode & Multi-Harness PR / Issue Triage'
+    ),
+    prompt: translate(
+      'auto.components.automations.automation.templates.opencodeTriage.prompt',
+      'Scan open issues and PRs, synchronize task status across the Lunar Orca Kanban board, classify priority items for pi/opencode/claude/codex harnesses, and prepare isolated worktree fix plans.'
+    ),
+    preset: 'hourly',
+    time: '00:00',
+    customSchedule: '0 * * * *',
+    agentId: 'opencode',
+    createTarget: 'orca',
+    missedRunGraceMinutes: '45'
+  },
   {
     id: 'repo-health-weekday',
     category: translate(

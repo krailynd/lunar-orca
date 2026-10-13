@@ -233,6 +233,16 @@ function WorkspaceKanbanDrawerContent({
   useWorkspaceKanbanOutsideDismiss({ open, boardRef, preserveOpenForMenu, onOpenChange })
   useContextualTour('workspace-board', open && !dragPreview, 'workspace_board_visible')
 
+  const activeAgentCountByStatus = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const status of workspaceStatuses) {
+      const lane = laneViews.get(status.id)
+      const count = lane?.items.length ?? (worktreesByStatus.get(status.id) ?? []).length
+      counts.set(status.id, count)
+    }
+    return counts
+  }, [laneViews, workspaceStatuses, worktreesByStatus])
+
   return (
     <WorkspaceKanbanDrawerView
       areaSelectionOverlayRef={areaSelectionOverlayRef}
@@ -260,6 +270,7 @@ function WorkspaceKanbanDrawerContent({
         onQueryChange: setQuery,
         onClearQuery: clearQuery,
         workspaceStatuses,
+        activeAgentCountByStatus,
         syncTaskStatusFromWorkspaceBoard,
         onSyncTaskStatusFromWorkspaceBoardChange: setSyncTaskStatusFromWorkspaceBoard,
         onRenameStatus: handleRenameStatus,

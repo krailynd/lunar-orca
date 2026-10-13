@@ -1,6 +1,7 @@
 import AgentCombobox from '@/components/agent/AgentCombobox'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
+import { buildAutomationCronSchedule } from '../../../../shared/automation-schedule-occurrences'
 import {
   isValidAutomationCronSchedule,
   isValidAutomationSchedule
@@ -16,6 +17,7 @@ import { AutomationMissedRunGraceField } from './AutomationMissedRunGraceField'
 import { AutomationPrecheckFields } from './AutomationPrecheckFields'
 import AutomationProjectCombobox from './AutomationProjectCombobox'
 import { AutomationSchedulePicker } from './AutomationSchedulePicker'
+import { parseAutomationTime } from './AutomationTimeField'
 import { AutomationSessionField } from './AutomationSessionField'
 import { AutomationSetupDecisionField } from './AutomationSetupDecisionField'
 import { AutomationWorkspaceField } from './AutomationWorkspaceField'
@@ -99,6 +101,31 @@ export function AutomationEditorSettingsSidebar({
                   'Agent'
                 )}
               >
+                <div
+                  className="mb-1.5 flex flex-wrap items-center gap-1"
+                  data-testid="automation-harness-quick-select"
+                >
+                  {(['pi', 'hermes', 'opencode', 'claude', 'codex'] as const).map((harnessId) => {
+                    const isSelected = draft.agentId === harnessId
+                    return (
+                      <button
+                        key={harnessId}
+                        type="button"
+                        onClick={() =>
+                          onDraftChange((current) => ({ ...current, agentId: harnessId }))
+                        }
+                        className={cn(
+                          'rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase transition-colors',
+                          isSelected
+                            ? 'border-workspace-status-review/70 bg-workspace-status-review/20 text-git-graph-lane-4 shadow-xs'
+                            : 'border-border/60 bg-background/60 text-muted-foreground hover:border-workspace-status-review/40 hover:text-foreground'
+                        )}
+                      >
+                        {harnessId}
+                      </button>
+                    )
+                  })}
+                </div>
                 <AgentCombobox
                   agents={visibleAgents}
                   value={draft.agentId}
@@ -187,6 +214,23 @@ export function AutomationEditorSettingsSidebar({
             }
             onDraftChange={onDraftChange}
           />
+          <div
+            data-testid="automation-cron-schedule-preview"
+            className="mt-2 flex items-center justify-between gap-2 rounded-md border border-workspace-status-review/30 bg-workspace-status-review/10 px-2.5 py-1.5 text-[11px] text-git-graph-lane-4"
+          >
+            <span className="font-medium uppercase tracking-wider text-git-graph-lane-4/90">
+              Cron · {draft.agentId}
+            </span>
+            <code className="font-mono text-[11px] font-semibold text-foreground">
+              {draft.preset === 'custom'
+                ? draft.customSchedule.trim() || '0 * * * *'
+                : buildAutomationCronSchedule({
+                    preset: draft.preset,
+                    ...parseAutomationTime(draft.time),
+                    dayOfWeek: Number(draft.dayOfWeek)
+                  })}
+            </code>
+          </div>
         </Field>
         <div
           className={cn(
