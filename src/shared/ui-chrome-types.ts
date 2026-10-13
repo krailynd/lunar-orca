@@ -125,3 +125,4 @@ export type TopLevelView =
   | 'artifacts'
   | 'mobile'
   | 'home'
+  | 'lunargrip'

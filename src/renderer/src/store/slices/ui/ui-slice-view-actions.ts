@@ -113,6 +113,17 @@ export function createUiViewActions(set: UISliceSet, get: UISliceGet): Partial<U
       set((state) => ({
         activeView: state.previousViewBeforeHome
       })),
+    openLunarGripPage: () => {
+      set((state) => ({
+        activeView: 'lunargrip',
+        previousViewBeforeLunarGrip:
+          state.activeView === 'lunargrip' ? state.previousViewBeforeLunarGrip : state.activeView
+      }))
+    },
+    closeLunarGripPage: () =>
+      set((state) => ({
+        activeView: state.previousViewBeforeLunarGrip
+      })),
     setNewWorkspaceDraft: (draft) => set({ newWorkspaceDraft: draft }),
     clearNewWorkspaceDraft: () => set({ newWorkspaceDraft: null })
   }

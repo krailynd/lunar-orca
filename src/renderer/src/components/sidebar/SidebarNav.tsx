@@ -1,5 +1,14 @@
 import React from 'react'
-import { BookOpen, CalendarClock, EyeOff, Files, Home, Search, Smartphone } from 'lucide-react'
+import {
+  BookOpen,
+  CalendarClock,
+  Database,
+  EyeOff,
+  Files,
+  Home,
+  Search,
+  Smartphone
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -58,6 +67,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const openArtifactsPage = useAppStore((s) => s.openArtifactsPage)
   const openSkillsPage = useAppStore((s) => s.openSkillsPage)
   const openHomePage = useAppStore((s) => s.openHomePage)
+  const openLunarGripPage = useAppStore((s) => s.openLunarGripPage)
   const openModal = useAppStore((s) => s.openModal)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const activeView = useAppStore((s) => s.activeView)
@@ -67,6 +77,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const showArtifactsButton = useAppStore((s) => shouldShowArtifactsButton(s.settings))
   const showSkillsButton = useAppStore((s) => shouldShowSkillsButton(s.settings))
   const homeActive = activeView === 'home'
+  const lunarGripActive = activeView === 'lunargrip'
   const automationsActive = activeView === 'automations'
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
@@ -141,6 +152,26 @@ const SidebarNav = React.memo(function SidebarNav() {
       </button>
       <SetupGuideSidebarEntry />
       <SidebarTaskNavButton />
+      <button
+        type="button"
+        onClick={openLunarGripPage}
+        aria-current={lunarGripActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          lunarGripActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
+            : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
+        )}
+      >
+        <Database
+          className={cn(
+            'size-4 shrink-0',
+            lunarGripActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+          )}
+          strokeWidth={lunarGripActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1 font-medium">LunarGrip</span>
+      </button>
       {showArtifactsButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>

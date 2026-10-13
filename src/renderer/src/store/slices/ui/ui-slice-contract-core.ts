@@ -124,6 +124,7 @@ export type UiViewHistory =
   | 'artifacts'
   | 'mobile'
   | 'home'
+  | 'lunargrip'
 
 export type UISliceCore = {
   sidebarOpen: boolean
@@ -165,6 +166,7 @@ export type UISliceCore = {
   previousViewBeforeMobile: Exclude<UiViewHistory, 'mobile'>
   previousViewBeforeArtifacts: Exclude<UiViewHistory, 'artifacts'>
   previousViewBeforeHome: Exclude<UiViewHistory, 'home'>
+  previousViewBeforeLunarGrip: Exclude<UiViewHistory, 'lunargrip'>
   setActiveView: (view: UISliceCore['activeView']) => void
   taskPageData: TaskPageData
   taskResumeState: TaskResumeState | undefined
@@ -210,6 +212,8 @@ export type UISliceCore = {
   closeMobilePage: () => void
   openHomePage: () => void
   closeHomePage: () => void
+  openLunarGripPage: () => void
+  closeLunarGripPage: () => void
   setNewWorkspaceDraft: (draft: NonNullable<UISliceCore['newWorkspaceDraft']>) => void
   clearNewWorkspaceDraft: () => void
   pendingRevealWorktree: PendingSidebarWorktreeReveal | null

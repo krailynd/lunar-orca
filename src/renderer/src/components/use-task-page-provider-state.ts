@@ -57,9 +57,6 @@ export function useTaskPageProviderState(model: TaskPageSourceAvailabilityModel)
   const [githubMode, setGithubMode] = useState<'items' | 'project'>('items')
   const [taskPageViewMode, setTaskPageViewMode] = useState<'list' | 'kanban' | 'gantt'>('list')
   const [localTasksMode, setLocalTasksMode] = useState(() => {
-    if (pageData.localTasksMode) {
-      return true
-    }
     // Si los repos seleccionados no tienen identidad GitHub pero son proyectos locales
     if (
       selectedRepos.length > 0 &&
