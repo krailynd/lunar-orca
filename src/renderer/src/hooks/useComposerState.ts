@@ -46,6 +46,7 @@ export type UseComposerStateOptions = {
   initialProjectGroupId?: string
   initialName?: string
   initialPrompt?: string
+  initialNote?: string
   initialLinkedWorkItem?: LinkedWorkItemSummary | null
   initialGitHubWorkItem?: GitHubWorkItem | null
   initialTaskSourceContext?: TaskSourceContext | null

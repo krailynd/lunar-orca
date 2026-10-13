@@ -13,7 +13,7 @@ import {
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import logo from '../../../../resources/logo.svg'
+import logo from '../../../../../resources/logo.svg'
 import type { AiVaultSession } from '../../../../shared/ai-vault-types'
 import {
   activateAndRevealWorktree,
