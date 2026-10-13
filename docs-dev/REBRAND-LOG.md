@@ -54,14 +54,19 @@ Changing any of the following breaks CLI wrappers, deep links, Linux WM matching
 
 ## 2. Complete Icon & Graphic Asset Inventory
 
-| Asset Path | Format | Exact Dimensions / Type | Status in Phase 1 |
+### Official Brand Emblem: Squirrel on Crescent Moon ("La Ardillita Lunar")
+- **Source Image:** `/home/krailynd/Downloads/Gemini_Generated_Image_am4fs6am4fs6am4f.jpg` (2528x1696 JPEG).
+- **Processing:** Centered square crop, high-fidelity background removal (`-fuzz 18% -transparent "#f6f6f6"`), transparent padding, and high-quality downsampling.
+- **Vectorization:** Clean vector paths (`potrace` curve tracing) wrapped in scalable SVG with `viewBox="0 0 512 512"`.
+
+| Asset Path | Format | Exact Dimensions / Type | Status in Etapa 1 |
 | :--- | :--- | :--- | :--- |
-| `resources/build/icon.png` | PNG (RGBA, 8-bit) | `1024 x 1024` | **Updated** — Lunar Orca crescent + Osaka Jade (`#2DD5B7`) & lavender (`#c4b5fd`) neon ring on deep jade-black (`#090f0d` → `#111c18`) |
-| `resources/icon.png` | PNG (RGBA, 8-bit) | `256 x 256` | **Updated** — Runtime window icon (`getAppIconPath`) in Lunar Orca palette |
-| `resources/icon-dev.png` | PNG (RGBA, 8-bit) | `256 x 256` | **Updated** — Dev runtime window icon with lavender orb accent (`#c4b5fd`) |
-| `resources/logo.svg` | SVG Vector | `viewBox="0 0 256 256"` (`256 x 256`) | **Updated** — Clean scalable vector with Lunar Orca crescent + jade/lavender glow |
+| `resources/build/icon.png` | PNG (RGBA, 8-bit) | `1024 x 1024` | **Updated** — Official Lunar Orca squirrel on crescent moon silhouette, transparent RGBA |
+| `resources/icon.png` | PNG (RGBA, 8-bit) | `256 x 256` | **Updated** — Runtime window icon (`getAppIconPath`), crisp transparent RGBA |
+| `resources/icon-dev.png` | PNG (RGBA, 8-bit) | `256 x 256` | **Updated** — Dev runtime window icon, crisp transparent RGBA |
+| `resources/logo.svg` | SVG Vector | `viewBox="0 0 512 512"` (`512 x 512`) | **Updated** — Clean scalable vector paths with squirrel silhouette and crescent moon |
+| `resources/build/icon.ico` | MS Windows Icon | 6 embedded sizes (`256x256`, `128x128`, `64x64`, `48x48`, `32x32`, `16x16`) | **Updated** — Multi-resolution Windows ICO generated via `config/scripts/trim-windows-icon-source.mjs` |
 | `resources/build/icon.icns` | Apple Icon Image (`ic12`) | `647,652 bytes` (multi-res macOS iconset) | **Preserved** (macOS packaging target; Linux uses `resources/build/icon.png`) |
-| `resources/build/icon.ico` | MS Windows Icon | 6 embedded sizes (`256x256`, `128x128`, etc.) | **Preserved** (Windows packaging target) |
 | `resources/app-icons/orca-blue.png` | PNG (RGBA, 8-bit) | `1024 x 1024` | **Preserved** (Optional alternate icon preset in Appearance settings) |
 | `resources/app-icons/orca-watercolor.png` | PNG (RGBA, 8-bit) | `1024 x 1024` | **Preserved** (Optional alternate icon preset in Appearance settings) |
 | `resources/tray/orca-menu-barTemplate.png` | PNG (RGBA, 8-bit) | `22 x 14` | **Preserved** (1x status bar / tray template icon) |
