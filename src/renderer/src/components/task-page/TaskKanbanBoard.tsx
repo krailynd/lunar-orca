@@ -289,19 +289,19 @@ export function TaskPageKanbanBoard({
                         </DropdownMenu>
 
                         <div className="flex items-center gap-1">
-                          {(['pi', 'opencode', 'antigravity', 'claude', 'codex'] as const).map(
-                            (agentId) => (
-                              <button
-                                key={agentId}
-                                type="button"
-                                title={`Dispatch to ${agentId.toUpperCase()} in Lunar Orca worktree`}
-                                onClick={() => card.onDispatchAgent(agentId, card.column)}
-                                className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-muted-foreground transition-colors hover:border-workspace-status-review/50 hover:bg-workspace-status-review/15 hover:text-git-graph-lane-4"
-                              >
-                                {agentId === 'antigravity' ? 'agy' : agentId}
-                              </button>
-                            )
-                          )}
+                          {(
+                            ['pi', 'opencode', 'antigravity', 'claude', 'codex', 'hermes'] as const
+                          ).map((agentId) => (
+                            <button
+                              key={agentId}
+                              type="button"
+                              title={`Dispatch to ${agentId.toUpperCase()} in Lunar Orca worktree`}
+                              onClick={() => card.onDispatchAgent(agentId, card.column)}
+                              className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase text-muted-foreground transition-colors hover:border-workspace-status-review/50 hover:bg-workspace-status-review/15 hover:text-git-graph-lane-4"
+                            >
+                              {agentId === 'antigravity' ? 'agy' : agentId}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     </div>

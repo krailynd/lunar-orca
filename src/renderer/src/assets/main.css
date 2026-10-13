@@ -224,19 +224,19 @@
   --chart-3: var(--color-blue-600);
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
-  --worktree-sidebar: rgba(255, 255, 255, 0.65);
-  --worktree-sidebar-foreground: #1e293b;
+  --worktree-sidebar: rgba(255, 255, 255, 0.7);
+  --worktree-sidebar-foreground: #0f172a;
   --worktree-sidebar-accent: #ffffff;
   --worktree-sidebar-accent-foreground: #059669;
-  --worktree-sidebar-border: rgba(255, 255, 255, 0.55);
+  --worktree-sidebar-border: rgba(255, 255, 255, 0.6);
   --worktree-sidebar-ring: #0284c7;
-  --sidebar: rgba(255, 255, 255, 0.65);
-  --sidebar-foreground: #1e293b;
+  --sidebar: rgba(255, 255, 255, 0.7);
+  --sidebar-foreground: #0f172a;
   --sidebar-primary: #059669;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #ffffff;
   --sidebar-accent-foreground: #059669;
-  --sidebar-border: rgba(15, 23, 42, 0.06);
+  --sidebar-border: rgba(255, 255, 255, 0.6);
   --sidebar-ring: #0284c7;
   --terminal-pane-title-on-dark-fg: rgb(255 255 255 / 0.52);
   --terminal-pane-title-on-dark-input-fg: rgb(255 255 255 / 0.7);
@@ -290,8 +290,8 @@
   --orca-security-border: rgba(255, 255, 255, 0.07);
   --orca-security-input: rgba(255, 255, 255, 0.1);
   --orca-security-ring: rgba(45, 213, 183, 0.45);
-  --background: rgba(11, 17, 16, 0.92);
-  --editor-surface: #0e1614;
+  --background: rgba(10, 16, 14, 0.94);
+  --editor-surface: #0c1412;
   --foreground: #eaefe9;
   --chat-canvas-mix: 5%;
   --chat-foreground-mix: 78%;
@@ -308,15 +308,15 @@
   --chat-composer-base: transparent;
   --chat-composer-border-mix: 9%;
   --chat-content-max-width: 46rem;
-  --card: rgba(18, 27, 25, 0.9);
+  --card: rgba(16, 24, 21, 0.94);
   --card-foreground: #eaefe9;
-  --popover: rgba(16, 24, 22, 0.95);
+  --popover: rgba(12, 19, 17, 0.96);
   --popover-foreground: #eaefe9;
   --primary: #2dd5b7;
   --primary-foreground: #09100e;
   --secondary: rgba(45, 213, 183, 0.09);
   --secondary-foreground: #eaefe9;
-  --muted: rgba(24, 36, 33, 0.78);
+  --muted: rgba(20, 30, 27, 0.85);
   --muted-foreground: #94a89f;
   --accent: rgba(255, 255, 255, 0.06);
   --accent-foreground: #f7e8b2;
@@ -336,19 +336,19 @@
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
   /* Why: Refined Minimalist Dark Glass left worktree sidebar uses warm/cool frosted glass. */
-  --worktree-sidebar: rgba(13, 20, 18, 0.78);
+  --worktree-sidebar: rgba(12, 18, 16, 0.85);
   --worktree-sidebar-foreground: #eaefe9;
   --worktree-sidebar-accent: rgba(255, 255, 255, 0.07);
   --worktree-sidebar-accent-foreground: #eaefe9;
-  --worktree-sidebar-border: rgba(255, 255, 255, 0.06);
+  --worktree-sidebar-border: rgba(255, 255, 255, 0.07);
   --worktree-sidebar-ring: rgba(45, 213, 183, 0.45);
-  --sidebar: rgba(13, 20, 18, 0.8);
+  --sidebar: rgba(12, 18, 16, 0.85);
   --sidebar-foreground: #eaefe9;
   --sidebar-primary: #2dd5b7;
   --sidebar-primary-foreground: #09100e;
   --sidebar-accent: rgba(255, 255, 255, 0.07);
   --sidebar-accent-foreground: #eaefe9;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-border: rgba(255, 255, 255, 0.07);
   --sidebar-ring: rgba(45, 213, 183, 0.45);
   --terminal-pane-title-on-dark-fg: #eef2e6;
   --terminal-pane-title-on-dark-input-fg: #f7e8b2;
@@ -3405,33 +3405,33 @@ html.native-shell .app-layout {
 
 html.native-shell:not(.dark),
 html.native-shell:not(.dark) body {
-  background: linear-gradient(135deg, #f4f7fb 0%, #edf2f7 48%, #f0fdf4 100%) !important;
+  background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 45%, #f0fdf4 100%) !important;
 }
 
 html.native-shell.dark,
 html.native-shell.dark body {
   background: linear-gradient(
     135deg,
-    rgba(11, 17, 16, 0.94) 0%,
-    rgba(15, 23, 21, 0.92) 50%,
-    rgba(11, 17, 16, 0.95) 100%
+    rgba(10, 16, 14, 0.96) 0%,
+    rgba(12, 20, 18, 0.94) 50%,
+    rgba(10, 16, 14, 0.96) 100%
   ) !important;
 }
 
 :root:not(.dark) .bg-worktree-sidebar,
 :root:not(.dark) .bg-sidebar {
-  background-color: var(--worktree-sidebar);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
-  border-right: 1px solid var(--worktree-sidebar-border);
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.6) !important;
 }
 
 .dark .bg-worktree-sidebar,
 .dark .bg-sidebar {
-  background-color: var(--worktree-sidebar);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
-  border-right: 1px solid var(--worktree-sidebar-border);
+  background: rgba(12, 18, 16, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(130%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
 }
 
 :root:not(.dark) [data-worktree-sticky-header-active] {
@@ -3549,16 +3549,20 @@ html.native-shell.dark body {
 }
 
 :root:not(.dark) .app-layout > div > div[style*='min-width'] {
-  border-radius: 14px 0 0 0;
+  border-radius: 20px;
+  background: #ffffff !important;
   box-shadow:
     0 12px 32px -4px rgba(15, 23, 42, 0.05),
-    0 4px 12px -2px rgba(15, 23, 42, 0.03);
+    0 4px 12px -2px rgba(15, 23, 42, 0.03) !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
 
 .dark .app-layout > div > div[style*='min-width'] {
-  border-radius: 14px 0 0 0;
+  border-radius: 20px;
+  background: rgba(12, 20, 18, 0.94) !important;
   box-shadow:
     0 14px 36px -6px rgba(0, 0, 0, 0.45),
     0 4px 14px -2px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
 }

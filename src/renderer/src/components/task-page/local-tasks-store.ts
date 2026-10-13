@@ -25,6 +25,9 @@ let cachedTasksList: LocalProjectTask[] = []
 let cachedOverridesRaw: string | null = null
 let cachedOverridesMap: Record<string, ProviderTaskGanttOverride> = {}
 
+const EMPTY_OVERRIDES: Record<string, ProviderTaskGanttOverride> = {}
+const DEFAULT_SEED_SNAPSHOT: LocalProjectTask[] = buildDefaultSeedLocalTasks()
+
 function emitLocalTasksUpdated(): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(LOCAL_TASKS_UPDATED_EVENT))
@@ -205,7 +208,7 @@ export function shiftLocalTaskDates(
 
 export function loadProviderTaskGanttOverrides(): Record<string, ProviderTaskGanttOverride> {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return cachedOverridesMap
+    return cachedOverridesMap || EMPTY_OVERRIDES
   }
   const raw = window.localStorage.getItem(PROVIDER_TASK_GANTT_OVERRIDES_KEY)
   if (raw !== null && raw === cachedOverridesRaw) {
@@ -213,7 +216,7 @@ export function loadProviderTaskGanttOverrides(): Record<string, ProviderTaskGan
   }
   if (!raw) {
     cachedOverridesRaw = null
-    cachedOverridesMap = {}
+    cachedOverridesMap = EMPTY_OVERRIDES
     return cachedOverridesMap
   }
   try {
@@ -226,7 +229,9 @@ export function loadProviderTaskGanttOverrides(): Record<string, ProviderTaskGan
   } catch {
     // ignore malformed json
   }
-  return {}
+  cachedOverridesRaw = null
+  cachedOverridesMap = EMPTY_OVERRIDES
+  return EMPTY_OVERRIDES
 }
 
 export function updateProviderTaskGanttOverride(
@@ -282,12 +287,12 @@ export function useLocalProjectTasks(): {
   const tasks = useSyncExternalStore(
     subscribeToLocalTasks,
     loadLocalProjectTasks,
-    buildDefaultSeedLocalTasks
+    () => DEFAULT_SEED_SNAPSHOT
   )
   const overrides = useSyncExternalStore(
     subscribeToLocalTasks,
     loadProviderTaskGanttOverrides,
-    () => ({})
+    () => EMPTY_OVERRIDES
   )
   return { tasks, overrides }
 }

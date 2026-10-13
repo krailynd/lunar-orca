@@ -89,10 +89,12 @@ export function useTaskPageProviderState(model: TaskPageSourceAvailabilityModel)
         ? isGitLabMRFilter(gitlabFilter)
         : true
   const activeGitlabFilter = gitlabFilterIsValid ? gitlabFilter : 'opened'
-  // Why: Issues and MRs expose different filter sets; repair before commit so fetch effects never run glab with a stale filter from the other view.
-  if (!gitlabFilterIsValid) {
-    setGitlabFilter('opened')
-  }
+  // Why: Issues and MRs expose different filter sets; repair in effect so fetch effects never run glab with a stale filter from the other view, without triggering React #185 during render.
+  useEffect(() => {
+    if (!gitlabFilterIsValid) {
+      setGitlabFilter('opened')
+    }
+  }, [gitlabFilterIsValid])
   const displayedGitLabItems = useMemo(() => {
     if (gitlabView === 'issues') {
       return gitlabItems.filter((item) => item.type === 'issue')
