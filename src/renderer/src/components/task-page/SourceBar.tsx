@@ -2,7 +2,7 @@ import type { TaskPageComposerActionsModel } from '../use-task-page-composer-act
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
-import { X, ExternalLink, List, Columns3 } from 'lucide-react'
+import { X, ExternalLink, List, Columns3, CalendarRange, FolderKanban, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { LinearScopeSelector } from '@/components/linear-scope-selector'
@@ -48,7 +48,10 @@ export function TaskPageSourceBar({
     handleLinearTeamSelectionChange,
     handleLinearScopeOpen,
     taskPageViewMode,
-    setTaskPageViewMode
+    setTaskPageViewMode,
+    localTasksMode,
+    setLocalTasksMode,
+    setLocalTaskComposerOpen
   } = model
   return (
     <div className="flex items-center justify-between gap-2">
@@ -75,7 +78,7 @@ export function TaskPageSourceBar({
         </Tooltip>
         <div className="mx-1 h-5 w-px bg-border/50" aria-hidden />
         {visibleSourceOptions.map((source) => {
-          const active = taskSource === source.id
+          const active = !localTasksMode && taskSource === source.id
           const sourceAvailabilityNotice = taskSourceAvailabilityNoticeByProvider[source.id] ?? null
           const sourceDisabled = source.disabled || sourceAvailabilityNotice?.blocking
           return (
@@ -85,6 +88,7 @@ export function TaskPageSourceBar({
                   type="button"
                   disabled={sourceDisabled}
                   onClick={() => {
+                    setLocalTasksMode(false)
                     if (sourceAvailabilityNotice?.blocking) {
                       return
                     }
@@ -128,6 +132,34 @@ export function TaskPageSourceBar({
             </Tooltip>
           )
         })}
+        <div className="mx-1 h-5 w-px bg-border/50" aria-hidden />
+        <button
+          type="button"
+          data-testid="task-source-local-projects-btn"
+          aria-pressed={localTasksMode}
+          onClick={() => setLocalTasksMode(!localTasksMode)}
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition',
+            localTasksMode
+              ? 'border-workspace-status-review/50 bg-workspace-status-review/15 text-git-graph-lane-4 shadow-xs'
+              : 'border-border/50 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+          )}
+        >
+          <FolderKanban className="size-3.5" />
+          <span>Proyectos Locales</span>
+        </button>
+        <button
+          type="button"
+          data-testid="task-source-new-local-task-btn"
+          onClick={() => {
+            setLocalTasksMode(true)
+            setLocalTaskComposerOpen(true)
+          }}
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-workspace-status-review/35 bg-workspace-status-review/10 px-2.5 text-xs font-medium text-git-graph-lane-4 transition hover:bg-workspace-status-review/20"
+        >
+          <Plus className="size-3.5" />
+          <span>Nueva Tarea Local</span>
+        </button>
         <div
           className="hidden min-w-0 max-w-[min(420px,40vw)] items-center rounded-md border border-border/50 bg-muted/35 px-2 py-1 text-xs text-muted-foreground sm:flex"
           title={taskSourceContextSummary.title}
@@ -263,6 +295,21 @@ export function TaskPageSourceBar({
         >
           <Columns3 className="size-3.5" />
           <span>Kanban</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTaskPageViewMode('gantt')}
+          aria-pressed={taskPageViewMode === 'gantt'}
+          data-testid="task-page-view-mode-gantt"
+          className={cn(
+            'inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-xs font-medium transition-colors',
+            taskPageViewMode === 'gantt'
+              ? 'border border-workspace-status-review/40 bg-workspace-status-review/15 text-git-graph-lane-4 shadow-xs'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <CalendarRange className="size-3.5" />
+          <span>Gantt</span>
         </button>
       </div>
     </div>

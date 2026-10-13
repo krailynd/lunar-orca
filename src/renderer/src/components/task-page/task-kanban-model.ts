@@ -18,15 +18,24 @@ import {
   classifyTaskKanbanColumn,
   TASK_DISPATCH_AGENTS,
   TASK_KANBAN_COLUMNS,
+  TASK_KANBAN_DISPATCH_AGENTS,
   type TaskKanbanColumnId,
   type UnifiedKanbanTaskCard
 } from './task-kanban-defs'
+import {
+  loadLocalProjectTasks,
+  loadProviderTaskGanttOverrides,
+  type LocalProjectTask,
+  type ProviderTaskGanttOverride
+} from './local-tasks-store'
+import { buildLocalTaskCards, decorateProviderCardWithOverrides } from './local-tasks-cards'
 
 export {
   buildLunarOrcaMultiAgentDispatchPrompt,
   classifyTaskKanbanColumn,
   TASK_DISPATCH_AGENTS,
   TASK_KANBAN_COLUMNS,
+  TASK_KANBAN_DISPATCH_AGENTS,
   type TaskKanbanColumnId,
   type UnifiedKanbanTaskCard
 }
@@ -73,31 +82,24 @@ function dispatchToComposer(
 }
 
 export function buildKanbanCardsFromTaskPageModel(
-  model: TaskPageComposerActionsModel
+  model: TaskPageComposerActionsModel,
+  options?: {
+    localTasks?: LocalProjectTask[]
+    overrides?: Record<string, ProviderTaskGanttOverride>
+  }
 ): UnifiedKanbanTaskCard[] {
-  const {
-    taskSource,
-    repoMap,
-    allWorktrees,
-    filteredWorkItems,
-    displayedGitLabItems,
-    pagedLinearIssues,
-    displayedJiraIssues,
-    openGitHubDetailPage,
-    openGitLabDetailPage,
-    openLinearDetailPage,
-    openJiraDetailPage,
-    openModal,
-    linearTaskSourceContext,
-    jiraSites,
-    jiraTaskSourceContext
-  } = model
+  const localTasks = options?.localTasks ?? loadLocalProjectTasks()
+  const overrides = options?.overrides ?? loadProviderTaskGanttOverrides()
 
-  if (taskSource === 'github') {
-    return filteredWorkItems.map((item) => {
-      const itemRepo = repoMap.get(item.repoId) ?? null
+  if (model.localTasksMode) {
+    return buildLocalTaskCards(model, localTasks)
+  }
+
+  if (model.taskSource === 'github') {
+    return model.filteredWorkItems.map((item, idx) => {
+      const itemRepo = model.repoMap.get(item.repoId) ?? null
       const attached = findGithubWorkItemWorkspaceAttachment(
-        allWorktrees,
+        model.allWorktrees,
         item.repoId,
         item.type,
         item.number,
@@ -114,46 +116,50 @@ export function buildKanbanCardsFromTaskPageModel(
       if (item.repoId) {
         linkedWorkItem.repoId = item.repoId
       }
-      return {
-        key: `gh:${item.repoId}:${item.type}:${item.id}`,
-        identifier,
-        title: item.title,
-        url: item.url,
-        column: classifyTaskKanbanColumn({
-          rawState: item.state,
-          isReviewOrPR: item.type === 'pr',
-          labels: item.labels,
-          hasAttachedWorkspace: Boolean(attached)
-        }),
-        statusLabel: item.state,
-        repoLabel: itemRepo?.displayName ?? null,
-        repoId: item.repoId,
-        updatedAt: item.updatedAt,
-        labels: item.labels.slice(0, 3),
-        attachedWorkspaceLabel: attached ? getWorktreeAttachmentLabel(attached) : null,
-        onOpenDetail: () => openGitHubDetailPage(item),
-        onDispatchAgent: (agentId, targetCol) =>
-          dispatchToComposer(openModal, 'github-tasks', {
-            agentId,
-            targetCol,
-            identifier,
-            title: item.title,
-            url: item.url,
-            repoName: itemRepo?.displayName ?? null,
-            linkedWorkItem,
-            initialGitHubWorkItem: item,
-            taskSourceContext: getTaskPageRepoSourceContext(itemRepo ?? undefined, 'github'),
-            prefilledName: getGitHubWorkItemWorkspaceSeed(item),
-            initialRepoId: item.repoId,
-            enableIssueAutomation: item.type === 'issue'
-          })
-      }
+      return decorateProviderCardWithOverrides(
+        {
+          key: `gh:${item.repoId}:${item.type}:${item.id}`,
+          identifier,
+          title: item.title,
+          url: item.url,
+          column: classifyTaskKanbanColumn({
+            rawState: item.state,
+            isReviewOrPR: item.type === 'pr',
+            labels: item.labels,
+            hasAttachedWorkspace: Boolean(attached)
+          }),
+          statusLabel: item.state,
+          repoLabel: itemRepo?.displayName ?? null,
+          repoId: item.repoId,
+          updatedAt: item.updatedAt,
+          labels: item.labels.slice(0, 3),
+          attachedWorkspaceLabel: attached ? getWorktreeAttachmentLabel(attached) : null,
+          onOpenDetail: () => model.openGitHubDetailPage(item),
+          onDispatchAgent: (agentId, targetCol) =>
+            dispatchToComposer(model.openModal, 'github-tasks', {
+              agentId,
+              targetCol,
+              identifier,
+              title: item.title,
+              url: item.url,
+              repoName: itemRepo?.displayName ?? null,
+              linkedWorkItem,
+              initialGitHubWorkItem: item,
+              taskSourceContext: getTaskPageRepoSourceContext(itemRepo ?? undefined, 'github'),
+              prefilledName: getGitHubWorkItemWorkspaceSeed(item),
+              initialRepoId: item.repoId,
+              enableIssueAutomation: item.type === 'issue'
+            })
+        },
+        idx,
+        overrides
+      )
     })
   }
 
-  if (taskSource === 'gitlab') {
-    return displayedGitLabItems.map((item) => {
-      const itemRepo = repoMap.get(item.repoId) ?? null
+  if (model.taskSource === 'gitlab') {
+    return model.displayedGitLabItems.map((item, idx) => {
+      const itemRepo = model.repoMap.get(item.repoId) ?? null
       const identifier = item.type === 'mr' ? `!${item.number}` : `#${item.number}`
       const linkedWorkItem: LinkedWorkItemSummary = {
         provider: 'gitlab',
@@ -165,112 +171,128 @@ export function buildKanbanCardsFromTaskPageModel(
       if (item.repoId) {
         linkedWorkItem.repoId = item.repoId
       }
-      return {
-        key: `gl:${item.repoId}:${item.id}`,
-        identifier,
-        title: item.title,
-        url: item.url,
-        column: classifyTaskKanbanColumn({
-          rawState: item.state,
-          isReviewOrPR: item.type === 'mr',
-          labels: item.labels
-        }),
-        statusLabel: item.state,
-        repoLabel: itemRepo?.displayName ?? null,
-        repoId: item.repoId,
-        updatedAt: item.updatedAt,
-        labels: item.labels.slice(0, 3),
-        attachedWorkspaceLabel: null,
-        onOpenDetail: () => openGitLabDetailPage(item),
-        onDispatchAgent: (agentId, targetCol) =>
-          dispatchToComposer(openModal, 'gitlab-tasks', {
-            agentId,
-            targetCol,
-            identifier,
-            title: item.title,
-            url: item.url,
-            repoName: itemRepo?.displayName ?? null,
-            linkedWorkItem,
-            taskSourceContext: getTaskPageRepoSourceContext(
-              itemRepo ?? undefined,
-              'gitlab',
-              item.projectRef
-            ),
-            prefilledName: getGitLabWorkItemWorkspaceSeed(item),
-            initialRepoId: item.repoId
-          })
-      }
+      return decorateProviderCardWithOverrides(
+        {
+          key: `gl:${item.repoId}:${item.type}:${item.id}`,
+          identifier,
+          title: item.title,
+          url: item.url,
+          column: classifyTaskKanbanColumn({
+            rawState: item.state,
+            isReviewOrPR: item.type === 'mr',
+            labels: item.labels
+          }),
+          statusLabel: item.state,
+          repoLabel: itemRepo?.displayName ?? null,
+          repoId: item.repoId,
+          updatedAt: item.updatedAt,
+          labels: item.labels.slice(0, 3),
+          attachedWorkspaceLabel: null,
+          onOpenDetail: () => model.openGitLabDetailPage(item),
+          onDispatchAgent: (agentId, targetCol) =>
+            dispatchToComposer(model.openModal, 'gitlab-tasks', {
+              agentId,
+              targetCol,
+              identifier,
+              title: item.title,
+              url: item.url,
+              repoName: itemRepo?.displayName ?? null,
+              linkedWorkItem,
+              taskSourceContext: getTaskPageRepoSourceContext(
+                itemRepo ?? undefined,
+                'gitlab',
+                item.projectRef
+              ),
+              prefilledName: getGitLabWorkItemWorkspaceSeed(item),
+              initialRepoId: item.repoId
+            })
+        },
+        idx,
+        overrides
+      )
     })
   }
 
-  if (taskSource === 'linear') {
-    return pagedLinearIssues.map((issue) => ({
-      key: `linear:${issue.id}`,
-      identifier: issue.identifier,
-      title: issue.title,
-      url: issue.url,
-      column: classifyTaskKanbanColumn({
-        rawState: `${issue.state.type} ${issue.state.name}`,
-        labels: issue.labels
-      }),
-      statusLabel: issue.state.name,
-      repoLabel: issue.team.name,
-      updatedAt: issue.updatedAt,
-      labels: issue.labels.slice(0, 3),
-      attachedWorkspaceLabel: null,
-      onOpenDetail: () => openLinearDetailPage(issue),
-      onDispatchAgent: (agentId, targetCol) =>
-        dispatchToComposer(openModal, 'linear-tasks', {
-          agentId,
-          targetCol,
+  if (model.taskSource === 'linear') {
+    return model.pagedLinearIssues.map((issue, idx) =>
+      decorateProviderCardWithOverrides(
+        {
+          key: `linear:${issue.id}`,
           identifier: issue.identifier,
           title: issue.title,
           url: issue.url,
-          repoName: issue.team.name,
-          linkedWorkItem: buildLinearIssueLinkedWorkItem(issue),
-          taskSourceContext: linearTaskSourceContext,
-          prefilledName: getLinearIssueWorkspaceName(issue)
-        })
-    }))
+          column: classifyTaskKanbanColumn({
+            rawState: `${issue.state.type} ${issue.state.name}`,
+            labels: issue.labels
+          }),
+          statusLabel: issue.state.name,
+          repoLabel: issue.team.name,
+          updatedAt: issue.updatedAt,
+          labels: issue.labels.slice(0, 3),
+          attachedWorkspaceLabel: null,
+          onOpenDetail: () => model.openLinearDetailPage(issue),
+          onDispatchAgent: (agentId, targetCol) =>
+            dispatchToComposer(model.openModal, 'linear-tasks', {
+              agentId,
+              targetCol,
+              identifier: issue.identifier,
+              title: issue.title,
+              url: issue.url,
+              repoName: issue.team.name,
+              linkedWorkItem: buildLinearIssueLinkedWorkItem(issue),
+              taskSourceContext: model.linearTaskSourceContext,
+              prefilledName: getLinearIssueWorkspaceName(issue)
+            })
+        },
+        idx,
+        overrides
+      )
+    )
   }
 
-  return displayedJiraIssues.map((issue) => ({
-    key: `jira:${issue.id}`,
-    identifier: issue.key,
-    title: issue.title,
-    url: issue.url,
-    column: classifyTaskKanbanColumn({
-      rawState: `${issue.status.categoryKey} ${issue.status.name}`,
-      labels: issue.labels
-    }),
-    statusLabel: issue.status.name,
-    repoLabel: issue.project.name,
-    updatedAt: issue.updatedAt,
-    labels: issue.labels.slice(0, 3),
-    attachedWorkspaceLabel: null,
-    onOpenDetail: () => openJiraDetailPage(issue),
-    onDispatchAgent: (agentId, targetCol) =>
-      dispatchToComposer(openModal, 'jira-tasks', {
-        agentId,
-        targetCol,
+  return model.displayedJiraIssues.map((issue, idx) =>
+    decorateProviderCardWithOverrides(
+      {
+        key: `jira:${issue.id}`,
         identifier: issue.key,
         title: issue.title,
         url: issue.url,
-        repoName: issue.project.name,
-        linkedWorkItem: {
-          type: 'issue',
-          provider: 'jira',
-          number: 0,
-          title: `${issue.key} ${issue.title}`,
-          url: issue.url,
-          jiraIdentifier: issue.key
-        },
-        taskSourceContext: bindTaskPageJiraItemSourceContext({
-          issue,
-          sites: jiraSites,
-          sourceContext: jiraTaskSourceContext
+        column: classifyTaskKanbanColumn({
+          rawState: `${issue.status.categoryKey} ${issue.status.name}`,
+          labels: issue.labels
         }),
-        prefilledName: getJiraIssueWorkspaceSeed(issue)
-      })
-  }))
+        statusLabel: issue.status.name,
+        repoLabel: issue.project.name,
+        updatedAt: issue.updatedAt,
+        labels: issue.labels.slice(0, 3),
+        attachedWorkspaceLabel: null,
+        onOpenDetail: () => model.openJiraDetailPage(issue),
+        onDispatchAgent: (agentId, targetCol) =>
+          dispatchToComposer(model.openModal, 'jira-tasks', {
+            agentId,
+            targetCol,
+            identifier: issue.key,
+            title: issue.title,
+            url: issue.url,
+            repoName: issue.project.name,
+            linkedWorkItem: {
+              type: 'issue',
+              provider: 'jira',
+              number: 0,
+              title: `${issue.key} ${issue.title}`,
+              url: issue.url,
+              jiraIdentifier: issue.key
+            },
+            taskSourceContext: bindTaskPageJiraItemSourceContext({
+              issue,
+              sites: model.jiraSites,
+              sourceContext: model.jiraTaskSourceContext
+            }),
+            prefilledName: getJiraIssueWorkspaceSeed(issue)
+          })
+      },
+      idx,
+      overrides
+    )
+  )
 }

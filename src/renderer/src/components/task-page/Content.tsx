@@ -7,6 +7,8 @@ import { TaskPageGitLabTodoList } from './gitlab/TodoList'
 import { TaskPageGitLabItemList } from './gitlab/ItemList'
 import { TaskPageJiraContent } from './jira/Content'
 import { TaskPageKanbanBoard } from './TaskKanbanBoard'
+import { TaskPageGanttView } from './TaskGanttView'
+import { TaskPageLocalListView } from './LocalTaskCreatorBar'
 export function TaskPageContent({
   model
 }: {
@@ -17,6 +19,7 @@ export function TaskPageContent({
     taskSource,
     githubMode,
     taskPageViewMode,
+    localTasksMode,
     gitlabView,
     dialogInitialTab,
     dialogWorkItem,
@@ -31,15 +34,20 @@ export function TaskPageContent({
     selectedLinearProject,
     selectedLinearCustomView
   } = model
-  const canRenderUnifiedKanban =
-    taskPageViewMode === 'kanban' &&
+  const noDetailOpen =
     !dialogWorkItem &&
     !selectedJiraIssue &&
     !selectedLinearIssue &&
     !selectedLinearProject &&
-    !selectedLinearCustomView &&
-    !(taskSource === 'github' && githubMode === 'project') &&
-    !(taskSource === 'gitlab' && gitlabView === 'todos')
+    !selectedLinearCustomView
+  const canRenderUnifiedBoardOrGantt =
+    noDetailOpen &&
+    (localTasksMode ||
+      (!(taskSource === 'github' && githubMode === 'project') &&
+        !(taskSource === 'gitlab' && gitlabView === 'todos')))
+  const canRenderUnifiedKanban = taskPageViewMode === 'kanban' && canRenderUnifiedBoardOrGantt
+  const canRenderUnifiedGantt = taskPageViewMode === 'gantt' && canRenderUnifiedBoardOrGantt
+  const canRenderLocalList = localTasksMode && taskPageViewMode === 'list' && noDetailOpen
   return taskSource === 'github' && dialogWorkItem ? (
     dialogWorkItem.type === 'pr' ? (
       <PullRequestPage
@@ -72,8 +80,12 @@ export function TaskPageContent({
         onClose={closeTaskDetailPage}
       />
     )
+  ) : canRenderUnifiedGantt ? (
+    <TaskPageGanttView model={model} />
   ) : canRenderUnifiedKanban ? (
     <TaskPageKanbanBoard model={model} />
+  ) : canRenderLocalList ? (
+    <TaskPageLocalListView model={model} />
   ) : taskSource === 'github' && githubMode === 'project' ? (
     <div className="mt-3 flex min-h-0 min-w-0 max-h-full flex-col overflow-hidden rounded-md border border-border/50 bg-muted/50 shadow-sm">
       <ProjectViewWrapper selectedRepoIds={repoSelection} />

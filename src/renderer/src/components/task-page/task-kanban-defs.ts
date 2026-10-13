@@ -30,18 +30,26 @@ export const TASK_KANBAN_COLUMNS: readonly {
   }
 ]
 
-export const TASK_DISPATCH_AGENTS: readonly { id: TuiAgent; label: string }[] = [
-  { id: 'pi', label: 'Pi' },
-  { id: 'opencode', label: 'OpenCode' },
-  { id: 'claude', label: 'Claude' },
-  { id: 'codex', label: 'Codex' },
-  { id: 'hermes', label: 'Hermes' }
+export const TASK_DISPATCH_AGENTS: readonly {
+  id: TuiAgent
+  label: string
+  shortLabel: string
+}[] = [
+  { id: 'pi', label: 'Pi Agent', shortLabel: 'Pi' },
+  { id: 'opencode', label: 'OpenCode', shortLabel: 'OpenCode' },
+  { id: 'antigravity', label: 'Antigravity (Agy)', shortLabel: 'Agy' },
+  { id: 'claude', label: 'Claude Code', shortLabel: 'Claude' },
+  { id: 'codex', label: 'Codex', shortLabel: 'Codex' },
+  { id: 'hermes', label: 'Hermes', shortLabel: 'Hermes' }
 ]
+
+export const TASK_KANBAN_DISPATCH_AGENTS = TASK_DISPATCH_AGENTS
 
 export type UnifiedKanbanTaskCard = {
   key: string
   identifier: string
   title: string
+  description?: string
   url: string
   column: TaskKanbanColumnId
   statusLabel: string
@@ -50,8 +58,18 @@ export type UnifiedKanbanTaskCard = {
   updatedAt?: string
   labels: string[]
   attachedWorkspaceLabel: string | null
+  isLocalTask?: boolean
+  localTaskId?: string
+  priority?: 'low' | 'medium' | 'high'
+  assignedAgentId?: TuiAgent | null
+  startDate: string
+  endDate: string
+  progress: number
   onOpenDetail: () => void
   onDispatchAgent: (agentId: TuiAgent, column: TaskKanbanColumnId) => void
+  onMoveColumn: (nextColumn: TaskKanbanColumnId) => void
+  onShiftDates: (deltaDays: number, mode?: 'move' | 'resize-start' | 'resize-end') => void
+  onDeleteLocalTask?: () => void
 }
 
 export function buildLunarOrcaMultiAgentDispatchPrompt(args: {
