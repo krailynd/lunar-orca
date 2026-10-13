@@ -4,6 +4,7 @@
   flex: 1;
   overflow: hidden;
   position: relative;
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Shared tooltip geometry for every terminal link provider. */
@@ -580,6 +581,10 @@
 
 /* ── Osaka Jade Neon Glass Terminal Surfaces (Lunar Orca) ─────────────────── */
 
+.pane {
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .dark .terminal-container,
 .dark .pane-manager-root,
 .dark .pane,
@@ -589,6 +594,8 @@
   -webkit-backdrop-filter: none !important;
 }
 
+.xterm,
+.xterm-viewport,
 .dark .xterm,
 .dark .xterm-viewport {
   background-color: transparent !important;
