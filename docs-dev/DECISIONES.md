@@ -61,6 +61,23 @@ Además, `claude`, `codex`, `opencode` y `pi` son ciudadanos de primer orden en 
 
 ---
 
+## 6. Sistema Visual Floating Glass, Motor de Tareas Locales y Gantt Interactivo (Bloques 6–8 · `v1.4.224-lunar.2`)
+
+### 6.1. Sistema Visual Floating Glass (Bloque 6)
+- **Light Mode Soft Glassmorphism**: Gradiente ambiental suave `#F4F7FB -> #F0FDF4`, cuerpo central `#FFFFFF` elevado con sombra difusa, botones de navegación tipo Pill (`9999px`) y paleta de terminal `Builtin Tango Light` adaptada para máxima legibilidad diurna.
+- **Dark Mode Minimalista Elegante Cálido/Frío**: Superficie de cristal esmerilado suave con equilibrio térmico cálido/frío y eliminación de sombras de texto agresivas para sesiones prolongadas sin fatiga visual.
+
+### 6.2. Motor de Tareas Locales, Kanban Drag-and-Drop y Gantt Interactivo (Bloque 7)
+- **Store de tareas locales (`local-tasks-store.ts`)**: Persistencia y CRUD completo de tareas locales personalizadas por proyecto convivientes con los proveedores nativos (`GitHub`, `Linear`, `Jira`, `GitLab`).
+- **Selector triple de vista (`List | Kanban | Gantt`)**: Conmutación fluida entre lista estructurada, tablero Kanban interactivo con drag-and-drop entre columnas de estado y cronograma temporal.
+- **Diagrama de Gantt interactivo (`TaskGanttView.tsx`)**: Línea de tiempo estilo Notion/Lark con barras de duración, progreso, dependencias visuales y edición rápida de fechas.
+- **Delegación directa a los 6 agentes**: Despacho de tareas desde cualquier vista hacia **`Pi`**, **`OpenCode`**, **`Antigravity (Agy)`**, **`Claude`**, **`Codex`** y **`Hermes`**.
+
+### 6.3. Dashboard `Home` con Tareas Locales & Cronograma (Bloque 8)
+- **Sección `Tareas Locales & Cronograma (Kanban / Gantt)` (`HomePageLocalTasksSection.tsx`)**: Integración directa en el dashboard `Home` con conmutador rápido `Kanban | Gantt`, formulario de alta rápida inline y despacho inmediato de tareas a los 6 agentes del ecosistema.
+
+---
+
 ## 4. SSH Remote Worktrees (`sahacloud`)
 
 ### Configuración del Host
