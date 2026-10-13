@@ -56,7 +56,19 @@ export function useTaskPageProviderState(model: TaskPageSourceAvailabilityModel)
   const projectModeVisible = taskSource === 'github'
   const [githubMode, setGithubMode] = useState<'items' | 'project'>('items')
   const [taskPageViewMode, setTaskPageViewMode] = useState<'list' | 'kanban' | 'gantt'>('list')
-  const [localTasksMode, setLocalTasksMode] = useState(false)
+  const [localTasksMode, setLocalTasksMode] = useState(() => {
+    if (pageData.localTasksMode) {
+      return true
+    }
+    // Si los repos seleccionados no tienen identidad GitHub pero son proyectos locales
+    if (
+      selectedRepos.length > 0 &&
+      selectedRepos.every((r) => !r.upstream && !r.gitRemoteIdentity)
+    ) {
+      return true
+    }
+    return false
+  })
   const [localTaskComposerOpen, setLocalTaskComposerOpen] = useState(false)
 
   // ── GitLab task-source state ──────────────────────────────────────

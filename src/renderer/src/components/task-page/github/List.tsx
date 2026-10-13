@@ -10,7 +10,7 @@ import {
 } from '../../task-page-source-context'
 import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle } from 'lucide-react'
+import { FolderKanban, LoaderCircle } from 'lucide-react'
 import { TaskPageGitHubRows } from './Rows'
 import { PaginationBar } from '../PaginationBar'
 import { supersedeGitHubListScrollRestore } from '../../task-page-github-list-scroll-restore'
@@ -27,6 +27,7 @@ export function TaskPageGitHubList({
     failedCount,
     githubUnavailable,
     githubResumeContextKey,
+    setLocalTasksMode,
     pages,
     currentPage,
     setCurrentPage,
@@ -189,34 +190,46 @@ export function TaskPageGitHubList({
             key={`source-unresolved-${r.repoId}`}
             role="status"
             aria-atomic="true"
-            className="flex items-center justify-between gap-3 border-b border-border/50 bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
           >
-            <span>
-              {translate(
-                'auto.components.TaskPage.noGithubSourceDetected',
-                'No GitHub source detected for'
-              )}{' '}
-              <span className="font-mono">{r.label}</span> —{' '}
-              {translate(
-                'auto.components.TaskPage.noGithubSourceDetectedHint',
-                'it may have no GitHub remote, or the source could not be resolved.'
-              )}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRetryIssuesFetch(r.sourceKey)}
-              disabled={tasksLoading || retryingSourceKeys.has(r.sourceKey)}
-            >
-              {retryingSourceKeys.has(r.sourceKey) ? (
-                <span className="flex items-center gap-1">
-                  <LoaderCircle className="h-3 w-3 animate-spin" />
-                  {translate('auto.components.TaskPage.5b6b2af943', 'Retrying…')}
-                </span>
-              ) : (
-                translate('auto.components.TaskPage.0bfbf62f75', 'Retry')
-              )}
-            </Button>
+            <div className="flex flex-col gap-1">
+              <span>
+                {translate(
+                  'auto.components.TaskPage.noGithubSourceDetected',
+                  'No GitHub source detected for'
+                )}{' '}
+                <span className="font-mono font-medium text-foreground">{r.label}</span> —{' '}
+                {translate(
+                  'auto.components.TaskPage.noGithubSourceDetectedHint',
+                  'it may have no GitHub remote, or the source could not be resolved.'
+                )}
+              </span>
+              <span className="text-xs text-muted-foreground/80">
+                Este proyecto es local. Podés gestionar sus tareas locales con Kanban y Diagrama de
+                Gantt.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="default" size="sm" onClick={() => setLocalTasksMode(true)}>
+                <FolderKanban className="size-3.5" />
+                Cambiar a Tareas Locales / Proyectos Locales
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRetryIssuesFetch(r.sourceKey)}
+                disabled={tasksLoading || retryingSourceKeys.has(r.sourceKey)}
+              >
+                {retryingSourceKeys.has(r.sourceKey) ? (
+                  <span className="flex items-center gap-1">
+                    <LoaderCircle className="h-3 w-3 animate-spin" />
+                    {translate('auto.components.TaskPage.5b6b2af943', 'Retrying…')}
+                  </span>
+                ) : (
+                  translate('auto.components.TaskPage.0bfbf62f75', 'Retry')
+                )}
+              </Button>
+            </div>
           </div>
         ))}
 
