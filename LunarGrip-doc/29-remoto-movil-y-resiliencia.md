@@ -109,4 +109,3 @@ required_approval
 - el usuario puede ver el trayecto cliente → relay → host;
 - un host eliminado produce tareas de recuperación, no automatizaciones
   silenciosamente huérfanas.
-

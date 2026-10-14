@@ -49,4 +49,3 @@ control de sus datos.
 - Resolver todos los motores desde el primer hito.
 - Embebir código con licencia incompatible sin revisión.
 - Convertir al arnés PI en un runtime dependiente de LunarGrip.
-

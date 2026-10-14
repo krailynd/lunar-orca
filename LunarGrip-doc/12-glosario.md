@@ -15,4 +15,3 @@
 | Mutación | Operación que cambia datos, esquema, permisos o estado. |
 | Host | Máquina donde se ejecuta una operación: local o remota. |
 | Evidencia | Dato verificable que respalda un hecho o resultado. |
-

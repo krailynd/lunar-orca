@@ -112,4 +112,3 @@ hacer que una tarjeta no sea solo texto:
 - Un catálogo que pretenda saberlo todo sin conectores.
 - Un “agente autónomo” con permisos de producción.
 - Un dashboard genérico sin una pregunta o decisión asociada.
-

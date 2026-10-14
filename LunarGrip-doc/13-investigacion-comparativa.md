@@ -134,4 +134,3 @@ La búsqueda web directa entregó documentación primaria y resúmenes de
 resultados; no se ejecutaron benchmarks, pruebas de compatibilidad ni auditoría
 de licencias de cada dependencia. Los enlaces son evidencia para diseñar
 requisitos, no autorización para copiar código o afirmar paridad completa.
-

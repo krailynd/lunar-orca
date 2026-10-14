@@ -201,4 +201,3 @@ ser el mismo modo sin límites:
 - un agente puede recibir selección y diagnostics sin copiar manualmente;
 - desconectar Neovim no pierde el workspace;
 - el fallback CLI sigue funcionando.
-

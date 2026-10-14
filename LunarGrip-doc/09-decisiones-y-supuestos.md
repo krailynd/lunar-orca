@@ -22,4 +22,3 @@
 
 Toda nueva decisión debe incluir: contexto, alternativas, elección, impacto,
 reversibilidad, evidencia y fecha.
-

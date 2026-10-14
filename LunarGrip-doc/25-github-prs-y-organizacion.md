@@ -164,4 +164,3 @@ bloqueos de CI.
 - comentarios de issues/PR son datos no confiables;
 - un prompt inyectado en README o comentario no cambia las reglas del agente;
 - toda acción externa registra actor, scopes, target y resultado.
-

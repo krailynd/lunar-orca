@@ -58,4 +58,3 @@ Lunar Orca
 
 Ver `diagramas/arquitectura.md`. Es deliberadamente conceptual hasta que se
 confirmen los puntos anteriores.
-

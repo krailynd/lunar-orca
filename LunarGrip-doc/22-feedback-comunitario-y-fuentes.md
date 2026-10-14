@@ -90,4 +90,3 @@ medir frecuencia.
 - ¿Qué nunca dejarías que un agente ejecute?
 - ¿Qué debería abrir una tarjeta de Orca automáticamente?
 - ¿Qué evidencia necesitás para confiar en un resultado?
-

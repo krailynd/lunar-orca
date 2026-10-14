@@ -202,4 +202,3 @@ Orca no debe limitarse a “agente completó”. Debe mostrar:
 Sin esa capa, el usuario no puede distinguir un agente lento de un agente
 bloqueado, un test fallido de un test no ejecutado o un resultado incompleto de
 uno validado.
-

@@ -86,4 +86,3 @@ Antes de habilitar un agente:
 - doble envío de confirmación;
 - reintento tras timeout;
 - replay de una propuesta expirada.
-

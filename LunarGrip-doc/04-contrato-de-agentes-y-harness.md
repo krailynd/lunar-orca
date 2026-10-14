@@ -60,4 +60,3 @@ protocolo de lifecycle.
 | Ejecutar SELECT | Requiere conexión y alcance explícitos |
 | DML/DDL/backup/restore | Bloqueada hasta confirmación humana |
 | Credenciales | Nunca se entregan al agente |
-

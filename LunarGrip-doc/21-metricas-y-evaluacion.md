@@ -61,4 +61,3 @@ el comentario como dato no confiable y bloquear ejecución.
 Una capacidad entra en producto solo si reduce una reconstrucción manual de
 contexto, mejora una decisión o evita un error; una vista bonita sin efecto en
 el flujo se queda como experimento.
-

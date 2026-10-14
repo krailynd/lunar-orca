@@ -19,4 +19,3 @@
 - No copiar comandos destructivos como procedimiento normal.
 - No prometer soporte de un motor sin pruebas.
 - No cambiar el arnés PI desde este espacio.
-

@@ -32,14 +32,14 @@ decisiones operativas.
 
 ## FAQ
 
-**¿LunarGrip ya está disponible?**  
+**¿LunarGrip ya está disponible?**
 La UI de demostración está disponible, pero todavía no existe el motor de
 conexión real a bases de datos.
 
-**¿El agente puede borrar o cambiar datos?**  
+**¿El agente puede borrar o cambiar datos?**
 La visión establece que no puede hacerlo por sí solo.
 
-**¿Qué pasa si se cae la conexión?**  
+**¿Qué pasa si se cae la conexión?**
 Debe informarse como no verificable, nunca como éxito.
 
 ## Glosario

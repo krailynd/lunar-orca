@@ -152,4 +152,3 @@ El móvil debe ser de supervisión, no un IDE reducido:
 
 Editar archivos grandes o resolver conflictos complejos debe derivar al
 desktop/remote workspace.
-

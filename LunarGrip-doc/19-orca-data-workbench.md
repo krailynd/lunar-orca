@@ -124,4 +124,3 @@ Pregunta | Asset | Owner | Entorno | Calidad | Lineage | Código | Runs | Riesgo
 Así el usuario puede pasar de una petición de negocio a una tabla, de una tabla
 a una transformación, de la transformación a un job y del job a un incidente
 sin reconstruir el contexto manualmente.
-

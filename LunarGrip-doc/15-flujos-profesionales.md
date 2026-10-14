@@ -81,4 +81,3 @@ incertidumbre.
 
 **Éxito:** el agente no recibe secretos, no decide permisos y no puede saltarse
 la confirmación desde texto.
-

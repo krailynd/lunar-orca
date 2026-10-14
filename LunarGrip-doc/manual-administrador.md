@@ -30,4 +30,3 @@ procedimiento operativo en esta entrega.
 Se requiere auditoría correlacionada, redacción de datos sensibles y estados
 explícitos de host. Los nombres concretos de archivos, puertos y servicios
 quedan pendientes de la decisión de arquitectura.
-

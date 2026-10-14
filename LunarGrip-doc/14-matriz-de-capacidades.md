@@ -111,4 +111,3 @@
 - métricas de latencia y memoria;
 - logs diagnósticos sin secretos;
 - importación/exportación de configuración sin credenciales.
-

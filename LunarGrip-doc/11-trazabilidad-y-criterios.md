@@ -36,4 +36,3 @@ explanation
 
 El formato es conceptual hasta que se formalice el contrato. No implica que
 LunarGrip ya lo emita.
-

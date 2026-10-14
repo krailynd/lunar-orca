@@ -120,4 +120,3 @@ Cada nueva capacidad debe contestar:
 4. ¿Qué ocurre si falla o se desconecta?
 5. ¿Qué permiso necesita?
 6. ¿Cómo se integra con editor, agente, tarea y PR?
-

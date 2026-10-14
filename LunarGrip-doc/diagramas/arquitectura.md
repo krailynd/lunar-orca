@@ -30,4 +30,3 @@ flowchart LR
 No se genera un DER porque no se aportó una base de datos de LunarGrip ni un
 esquema persistente decidido. Crear uno ahora sería inventar estructura. Cuando
 se defina la persistencia, debe documentarse el DER con PK/FK y ciclo de vida.
-

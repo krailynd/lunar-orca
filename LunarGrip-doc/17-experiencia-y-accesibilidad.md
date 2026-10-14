@@ -60,4 +60,3 @@ entender un objeto.
 - Cancelar una consulta deja claro si fue cancelada o si terminó antes.
 - Cerrar un preview no produce cambios.
 - La misma tarea es operable con teclado.
-

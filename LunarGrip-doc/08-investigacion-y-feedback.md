@@ -38,4 +38,3 @@ Decisión:
 
 Las referencias externas enumeradas en el documento maestro quedan como
 **candidatas**, no como investigación validada en esta entrega.
-

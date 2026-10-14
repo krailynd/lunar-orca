@@ -136,4 +136,3 @@ Añadir acciones DBA, conectores y motores solo cuando existan:
 | Integración | ¿Queda trazado en Orca sin duplicar PI? |
 | Accesibilidad | ¿El flujo es usable sin ratón y con estados claros? |
 | Valor | ¿Reduce trabajo real o solo agrega una vista? |
-

@@ -34,4 +34,3 @@
 | RF-13 | Generar propuestas estructuradas con riesgo y confirmación requerida. | P0 | Propuesto |
 | RF-14 | Rechazar solicitudes que contradigan el snapshot o permisos. | P0 | Propuesto |
 | RF-15 | Devolver respuesta útil cuando el contexto está incompleto. | P0 | Propuesto |
-
