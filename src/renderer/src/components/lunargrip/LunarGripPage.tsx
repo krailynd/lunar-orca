@@ -28,6 +28,15 @@ export default function LunarGripPage(): React.JSX.Element {
   const [activeConnection, setActiveConnection] = useState<DatabaseConnection | null>(null)
   const [selectedTable, setSelectedTable] = useState<SchemaTable | null>(null)
 
+  const handleDialogChange = (open: boolean): void => {
+    setConnectionDialogOpen(open)
+    if (open && uiState === 'disconnected') {
+      setUiState('configuring')
+    } else if (!open && uiState === 'configuring') {
+      setUiState('disconnected')
+    }
+  }
+
   const openDemo = (): void => {
     setActiveConnection(null)
     setUiState('demo')
@@ -153,7 +162,7 @@ export default function LunarGripPage(): React.JSX.Element {
 
       <LunarGripConnectionDialog
         open={connectionDialogOpen}
-        onOpenChange={setConnectionDialogOpen}
+        onOpenChange={handleDialogChange}
         onOpenDemo={openDemo}
         onTestConnection={handleTestConnection}
       />

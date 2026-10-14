@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import type { OnMount } from '@monaco-editor/react'
 import { AlertCircle, Copy, Database, MessageSquare, Play, Terminal } from 'lucide-react'
@@ -39,9 +39,11 @@ export function LunarGripSqlEditor({
   }
   const [completionReady, setCompletionReady] = useState(false)
   const [copied, setCopied] = useState(false)
+  const completionDisposableRef = useRef<{ dispose: () => void } | null>(null)
 
   const handleEditorMount: OnMount = (editor, monaco) => {
-    const provider = monaco.languages.registerCompletionItemProvider('sql', {
+    completionDisposableRef.current?.dispose()
+    completionDisposableRef.current = monaco.languages.registerCompletionItemProvider('sql', {
       provideCompletionItems: () => ({
         suggestions: [
           ...['SELECT', 'FROM', 'WHERE', 'JOIN', 'ORDER BY'].map((label) => ({
@@ -77,8 +79,15 @@ export function LunarGripSqlEditor({
       run: () => editor.trigger('keyboard', 'editor.action.triggerSuggest', {})
     })
     setCompletionReady(true)
-    void provider
   }
+
+  useEffect(
+    () => () => {
+      completionDisposableRef.current?.dispose()
+      completionDisposableRef.current = null
+    },
+    []
+  )
 
   useEffect(() => {
     if (selectedTable) {

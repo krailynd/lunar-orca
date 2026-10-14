@@ -11,6 +11,7 @@ estado visual debe ser una fuente honesta de contexto.
 |---|---|
 | Sin conexión | No existe sesión ni snapshot activo. |
 | Configurando | El usuario completa el formulario. |
+| Conectando | Reservado para el provider real; no se activa en la demo. |
 | Conectada | Reservado para un provider real validado. |
 | Cargando metadata | Se solicita metadata real. |
 | Partial / Stale | Snapshot incompleto o desactualizado. |
