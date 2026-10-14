@@ -41,8 +41,8 @@ export function LunarGripObjectExplorer({
     `${table.schema}.${table.name}`.toLowerCase().includes(filter.toLowerCase())
   )
   return (
-    <div className="flex h-full flex-col overflow-hidden border-r border-border bg-card select-none">
-      <div className="border-b border-border p-3">
+    <div className="flex h-full flex-col overflow-hidden border-r border-border/50 bg-card/80 backdrop-blur-md select-none">
+      <div className="lunargrip-rail border-b border-border/50 p-3">
         <div className="mb-3 flex items-center gap-2">
           <Database className="size-4 text-muted-foreground" />
           <span className="text-xs font-semibold">Object Explorer</span>
@@ -74,7 +74,7 @@ export function LunarGripObjectExplorer({
 
       <div className="flex-1 overflow-y-auto p-2 scrollbar-sleek">
         {state !== 'demo' ? (
-          <div className="p-3 text-xs text-muted-foreground">
+          <div className="lunargrip-empty-card mx-1 my-2 rounded-xl p-4 text-center text-xs text-muted-foreground">
             La metadata real aparecerá cuando exista una conexión.
           </div>
         ) : (
@@ -205,10 +205,12 @@ export function LunarGripObjectExplorer({
           </div>
         )}
         {state === 'demo' && visibleTables.length === 0 ? (
-          <div className="p-3 text-xs text-muted-foreground">No hay objetos que coincidan.</div>
+          <div className="lunargrip-empty-card mx-1 my-2 rounded-xl p-4 text-center text-xs text-muted-foreground">
+            No hay objetos que coincidan.
+          </div>
         ) : null}
       </div>
-      <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+      <div className="border-t border-border/50 bg-background/60 px-3 py-2 text-[10px] text-muted-foreground backdrop-blur-md">
         <div className="flex items-center gap-1.5">
           <Link2 className="size-3" /> Snapshot: sintético · sin conexión real
         </div>

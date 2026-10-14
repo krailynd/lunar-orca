@@ -38,8 +38,8 @@ export function LunarGripErdViewer({
       )
   )
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background select-none">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="lunargrip-ambient flex h-full flex-col overflow-hidden bg-background select-none">
+      <div className="flex items-center justify-between border-b border-border/50 bg-background/80 px-3 py-2 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-2">
           <Link2 className="size-4 text-primary" />
           <span className="truncate text-xs font-semibold text-foreground">
@@ -91,7 +91,7 @@ export function LunarGripErdViewer({
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-b border-border bg-card px-4 py-2 text-[11px] text-muted-foreground md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-b border-border/50 bg-card/70 px-4 py-2 text-[11px] text-muted-foreground backdrop-blur-md md:grid-cols-5">
         <span>
           Servidor: <strong className="text-foreground">{snapshot.server}</strong>
         </span>
@@ -111,7 +111,7 @@ export function LunarGripErdViewer({
           </strong>
         </span>
       </div>
-      <div className="flex-1 overflow-auto p-6 scrollbar-sleek">
+      <div className="lunargrip-canvas flex-1 overflow-auto p-6 scrollbar-sleek">
         <div
           className="mx-auto flex w-max origin-top-left flex-wrap gap-6"
           style={{ transform: `scale(${scale})` }}
@@ -122,9 +122,9 @@ export function LunarGripErdViewer({
             return (
               <div
                 key={`${table.schema}.${table.name}`}
-                className="flex flex-col rounded-xl border border-border/70 bg-card/90 shadow-sm overflow-hidden hover:border-primary/40 transition-all duration-200"
+                className="lunargrip-lift flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm backdrop-blur-md hover:border-primary/40"
               >
-                <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border/50">
+                <div className="lunargrip-rail flex items-center justify-between border-b border-border/50 bg-muted/30 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-foreground">
                       {table.schema}.{table.name}
@@ -191,7 +191,7 @@ export function LunarGripErdViewer({
           })}
         </div>
       </div>
-      <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-2 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-3 border-t border-border/50 bg-card/70 px-4 py-2 text-[10px] text-muted-foreground backdrop-blur-md">
         <span className="flex items-center gap-1">
           <Key className="size-3 text-callout-important" /> PK
         </span>

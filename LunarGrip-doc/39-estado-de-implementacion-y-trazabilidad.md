@@ -7,10 +7,12 @@
 | Contratos IPC | `src/shared/lunargrip-ipc-contract.ts` y `src/main/ipc/lunargrip.ts` |
 | Provider seguro demo | `src/main/lunargrip/lunargrip-provider.ts` |
 | Entrada honesta | `LunarGripPage.tsx` y `LunarGripConnectionDialog.tsx` |
-| Explorador | `LunarGripObjectExplorer.tsx` |
-| Editor | `LunarGripSqlEditor.tsx`, Monaco existente |
-| ERD | `LunarGripErdViewer.tsx` |
-| Preview SSMS | `LunarGripSsmsWorkbench.tsx` |
+| Explorador | `LunarGripObjectExplorer.tsx` (con soporte translúcido y cards vacías) |
+| Editor | `LunarGripSqlEditor.tsx`, Monaco existente (con tabs refinadas y empty states) |
+| ERD | `LunarGripErdViewer.tsx` (con lienzo limpio y badges sobrios) |
+| Preview SSMS | `LunarGripSsmsWorkbench.tsx` (con split pane y T-SQL preview) |
+| Trazabilidad de Tareas UI | `src/shared/orca-task-traceability.ts`, `local-tasks-cards.ts`, `local-tasks-types.ts` |
+| Sistema Visual Anti-Neón | `src/renderer/src/assets/main.css` (tokens `lunargrip-ambient`, `lunargrip-empty-card`, `lunargrip-spring`) |
 
 ## Demo/mock
 

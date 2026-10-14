@@ -1,5 +1,10 @@
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import type { TaskKanbanColumnId } from './task-kanban-defs'
+import {
+  createEmptyOrcaTaskTraceability,
+  type OrcaTaskLifecycleStatus,
+  type OrcaTaskTraceability
+} from '../../../../shared/orca-task-traceability'
+import { TASK_DISPATCH_AGENTS, type TaskKanbanColumnId } from './task-kanban-defs'
 
 export type LocalTaskColumnId = 'todo' | 'in-progress' | 'in-review' | 'completed'
 export type LocalTaskPriority = 'low' | 'medium' | 'high'
@@ -21,6 +26,8 @@ export type LocalProjectTask = {
   progress: number
   createdAt: number
   updatedAt: number
+  // Optional real execution evidence. Absent means "nothing recorded yet", never a fake record.
+  traceability?: OrcaTaskTraceability
 }
 
 export type ProviderTaskGanttOverride = {
@@ -119,6 +126,40 @@ export function normalizeLocalAgentId(
     return agentId
   }
   return null
+}
+
+export function localTaskColumnToLifecycleStatus(
+  columnId: LocalTaskColumnId
+): OrcaTaskLifecycleStatus {
+  if (columnId === 'completed') {
+    return 'completed'
+  }
+  if (columnId === 'in-review') {
+    return 'awaiting_approval'
+  }
+  if (columnId === 'in-progress') {
+    return 'in_progress'
+  }
+  return 'pending'
+}
+
+/**
+ * Resolves the traceability shown for a local task. Only facts the local task actually records are
+ * projected: the assigned agent and the lifecycle implied by its column. Execution, worktree,
+ * commit, PR, and artifacts stay explicitly empty instead of being simulated.
+ */
+export function resolveLocalTaskTraceability(task: LocalProjectTask): OrcaTaskTraceability {
+  if (task.traceability) {
+    return task.traceability
+  }
+  const base = createEmptyOrcaTaskTraceability(localTaskColumnToLifecycleStatus(task.columnId))
+  if (!task.assignedAgentId) {
+    return base
+  }
+  const agentLabel =
+    TASK_DISPATCH_AGENTS.find((agent) => agent.id === task.assignedAgentId)?.label ??
+    task.assignedAgentId
+  return { ...base, agent: { id: task.assignedAgentId, label: agentLabel } }
 }
 
 export function isLocalProjectTaskList(val: unknown): val is LocalProjectTask[] {

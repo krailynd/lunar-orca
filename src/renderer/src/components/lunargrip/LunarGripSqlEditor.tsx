@@ -113,8 +113,8 @@ export function LunarGripSqlEditor({
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-background">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="lunargrip-ambient flex h-full min-w-0 flex-col overflow-hidden bg-background">
+      <div className="flex items-center justify-between border-b border-border/50 bg-background/80 px-3 py-2 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
             {queries.map((query) => (
@@ -162,8 +162,8 @@ export function LunarGripSqlEditor({
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-[220px] flex-1 flex-col border-b border-border">
-          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+        <div className="flex min-h-[220px] flex-1 flex-col border-b border-border/50">
+          <div className="flex items-center gap-2 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
             <Terminal className="size-3.5" />
             <span>SQL · T-SQL</span>
             <span className="ml-auto">Ctrl/Cmd+Enter disponible con conexión real</span>
@@ -202,29 +202,35 @@ export function LunarGripSqlEditor({
               </TabsTrigger>
             </TabsList>
             <TabsContent value="results" className="h-[calc(100%-2.25rem)]">
-              <div className="flex h-full items-center justify-center gap-2 p-4 text-xs text-muted-foreground">
-                <Database className="size-4" />
-                <span>
-                  {demo
-                    ? 'DEMO · Datos sintéticos · Sin conexión real. No se ejecutan consultas.'
-                    : 'Sin conexión y sin resultados.'}
-                </span>
+              <div className="flex h-full items-center justify-center p-4">
+                <div className="lunargrip-empty-card flex items-center gap-2 rounded-xl px-6 py-4 text-xs text-muted-foreground">
+                  <Database className="size-4" />
+                  <span>
+                    {demo
+                      ? 'DEMO · Datos sintéticos · Sin conexión real. No se ejecutan consultas.'
+                      : 'Sin conexión y sin resultados.'}
+                  </span>
+                </div>
               </div>
             </TabsContent>
             <TabsContent value="messages" className="h-[calc(100%-2.25rem)]">
-              <div className="flex h-full items-center gap-2 p-4 text-xs text-muted-foreground">
-                <MessageSquare className="size-4" />
-                <span>Ejecución no disponible: no hay conexión real.</span>
+              <div className="flex h-full items-center justify-center p-4">
+                <div className="lunargrip-empty-card flex items-center gap-2 rounded-xl px-6 py-4 text-xs text-muted-foreground">
+                  <MessageSquare className="size-4" />
+                  <span>Ejecución no disponible: no hay conexión real.</span>
+                </div>
               </div>
             </TabsContent>
             <TabsContent value="diagnostics" className="h-[calc(100%-2.25rem)]">
-              <div className="flex h-full items-center gap-2 p-4 text-xs text-muted-foreground">
-                <AlertCircle className="size-4" />
-                <span>
-                  {demo
-                    ? 'Diagnósticos demo: no hay análisis de servidor disponible.'
-                    : 'No hay diagnósticos porque no existe una conexión real.'}
-                </span>
+              <div className="flex h-full items-center justify-center p-4">
+                <div className="lunargrip-empty-card flex items-center gap-2 rounded-xl px-6 py-4 text-xs text-muted-foreground">
+                  <AlertCircle className="size-4" />
+                  <span>
+                    {demo
+                      ? 'Diagnósticos demo: no hay análisis de servidor disponible.'
+                      : 'No hay diagnósticos porque no existe una conexión real.'}
+                  </span>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

@@ -65,10 +65,10 @@ export default function LunarGripPage(): React.JSX.Element {
     uiState === 'demo' ? MOCK_DATABASE_SCHEMA.database : (activeConnection?.database ?? '')
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
+    <div className="lunargrip-ambient flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex items-center justify-between border-b border-border/50 bg-background/80 px-4 py-2.5 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-md border border-border bg-card">
+          <div className="lunargrip-rail flex size-8 items-center justify-center rounded-lg border border-border/50 bg-card/80">
             <Database className="size-4 text-primary" />
           </div>
           <div>
@@ -115,7 +115,7 @@ export default function LunarGripPage(): React.JSX.Element {
         />
       ) : (
         <Tabs defaultValue="editor" className="flex min-h-0 flex-1">
-          <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
+          <div className="flex items-center justify-between border-b border-border/50 bg-background/80 px-4 py-1.5 backdrop-blur-md">
             <TabsList variant="line">
               <TabsTrigger value="editor">
                 <Terminal /> Object Explorer & SQL
@@ -180,9 +180,9 @@ function DisconnectedState({
   state: LunarGripUiState
 }): React.JSX.Element {
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-xl rounded-lg border border-border bg-card p-8 text-center shadow-sm">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-border bg-muted">
+    <div className="lunargrip-ambient flex min-h-0 flex-1 items-center justify-center p-6">
+      <div className="lunargrip-empty-card w-full max-w-xl rounded-xl p-8 text-center">
+        <div className="lunargrip-rail mx-auto mb-4 flex size-12 items-center justify-center rounded-xl border border-border/50 bg-card/70">
           {state === 'failed' ? (
             <RefreshCw className="size-6 text-destructive" />
           ) : (

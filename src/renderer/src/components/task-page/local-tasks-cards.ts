@@ -1,8 +1,10 @@
 import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { useAppStore } from '@/store'
+import { buildOrcaTaskTraceabilityIndicators } from '../../../../shared/orca-task-traceability'
 import {
   buildLunarOrcaMultiAgentDispatchPrompt,
+  TASK_DISPATCH_AGENTS,
   TASK_KANBAN_COLUMNS,
   type TaskKanbanColumnId,
   type UnifiedKanbanTaskCard
@@ -15,9 +17,11 @@ import {
   moveLocalTaskColumn,
   normalizeLocalAgentId,
   progressForLocalColumn,
+  resolveLocalTaskTraceability,
   shiftLocalTaskDates,
   shiftProviderTaskOverrideDates,
   toKanbanColumnId,
+  updateLocalTask,
   updateProviderTaskGanttOverride,
   type LocalProjectTask,
   type ProviderTaskGanttOverride
@@ -32,6 +36,17 @@ export function dispatchLocalTaskToComposer(
 ): void {
   const normalizedAgent = normalizeLocalAgentId(agentId)
   moveLocalTaskColumn(task.id, 'in-progress', normalizedAgent)
+  const dispatchedAgentLabel =
+    TASK_DISPATCH_AGENTS.find((agent) => agent.id === agentId)?.label ?? agentId
+  const traceability = resolveLocalTaskTraceability(task)
+  updateLocalTask(task.id, {
+    traceability: {
+      ...traceability,
+      agent: { id: agentId, label: dispatchedAgentLabel },
+      status: 'in_progress',
+      startedAt: traceability.startedAt ?? Date.now()
+    }
+  })
   const colMeta = TASK_KANBAN_COLUMNS.find((c) => c.id === targetCol) ?? TASK_KANBAN_COLUMNS[1]
   const resolvedRepoId =
     task.projectId && task.projectId !== 'global' ? task.projectId : fallbackRepoId
@@ -78,9 +93,10 @@ export function buildLocalTaskCards(
       const colMeta = TASK_KANBAN_COLUMNS.find((c) => c.id === column) ?? TASK_KANBAN_COLUMNS[0]
       const priorityLabel =
         task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja'
+      const traceability = resolveLocalTaskTraceability(task)
       const labels = [
         `Prioridad: ${priorityLabel}`,
-        ...(task.assignedAgentId ? [`Agente: ${task.assignedAgentId.toUpperCase()}`] : [])
+        ...buildOrcaTaskTraceabilityIndicators(traceability)
       ]
       return {
         key: `local:${task.id}`,

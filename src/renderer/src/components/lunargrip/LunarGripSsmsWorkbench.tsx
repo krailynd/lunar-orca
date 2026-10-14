@@ -21,6 +21,14 @@ import { SsmsAttachDetachForm, SsmsBackupForm, SsmsRestoreForm } from './LunarGr
 
 type SsmsTab = 'backup' | 'restore' | 'attach' | 'detach'
 
+// Segmented control shared by the SSMS tabs; spring-eased so the active chip
+// settles instead of snapping.
+const SEGMENT_BASE = 'lunargrip-spring flex items-center gap-1.5 rounded-md px-3 py-1 font-medium'
+const SEGMENT_IDLE = 'text-muted-foreground hover:text-foreground'
+const SEGMENT_ACTIVE = 'border border-primary/30 bg-primary/20 text-primary shadow-xs'
+const SEGMENT_DESTRUCTIVE =
+  'border border-destructive/25 bg-destructive/15 text-destructive shadow-xs'
+
 export function LunarGripSsmsWorkbench({
   activeDatabase
 }: {
@@ -89,17 +97,13 @@ export function LunarGripSsmsWorkbench({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background select-none overflow-hidden">
-      <div className="flex items-center justify-between p-2.5 border-b border-border/60 bg-muted/20">
-        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-muted/60 border border-border/50 text-xs">
+    <div className="lunargrip-ambient flex h-full flex-col overflow-hidden bg-background select-none">
+      <div className="flex items-center justify-between border-b border-border/50 bg-background/80 p-2.5 backdrop-blur-md">
+        <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-muted/50 p-0.5 text-xs backdrop-blur-md">
           <button
             type="button"
             onClick={() => setTab('backup')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium ${
-              tab === 'backup'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`${SEGMENT_BASE} ${tab === 'backup' ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
           >
             <Archive className="size-3.5" />
             <span>Backup (.BAK)</span>
@@ -107,11 +111,7 @@ export function LunarGripSsmsWorkbench({
           <button
             type="button"
             onClick={() => setTab('restore')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium ${
-              tab === 'restore'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`${SEGMENT_BASE} ${tab === 'restore' ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
           >
             <Database className="size-3.5" />
             <span>Restaurar (.BAK)</span>
@@ -119,11 +119,7 @@ export function LunarGripSsmsWorkbench({
           <button
             type="button"
             onClick={() => setTab('attach')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-medium ${
-              tab === 'attach'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`${SEGMENT_BASE} ${tab === 'attach' ? SEGMENT_ACTIVE : SEGMENT_IDLE}`}
           >
             <HardDrive className="size-3.5" />
             <span>Attach (.MDF)</span>
@@ -131,11 +127,7 @@ export function LunarGripSsmsWorkbench({
           <button
             type="button"
             onClick={() => setTab('detach')}
-            className={`px-3 py-1 rounded-md font-medium ${
-              tab === 'detach'
-                ? 'bg-destructive/15 text-destructive border border-destructive/25 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`${SEGMENT_BASE} ${tab === 'detach' ? SEGMENT_DESTRUCTIVE : SEGMENT_IDLE}`}
           >
             <span>Detach</span>
           </button>
@@ -145,7 +137,7 @@ export function LunarGripSsmsWorkbench({
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border/60 hover:bg-muted/40"
+            className="lunargrip-spring flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium hover:bg-muted/40"
           >
             {copied ? (
               <Check className="size-3 text-status-success" />
@@ -158,14 +150,14 @@ export function LunarGripSsmsWorkbench({
             type="button"
             disabled
             title="Disponible cuando exista una conexión real"
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+            className="lunargrip-spring flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
           >
             <Play className="size-3.5" />
             <span>Ejecutar (pendiente)</span>
           </button>
         </div>
       </div>
-      <div className="flex items-start gap-2 border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+      <div className="flex items-start gap-2 border-b border-border/50 bg-muted/25 px-4 py-2 text-xs text-muted-foreground backdrop-blur-md">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-status-warning" />
         <span>
           Vista previa solamente. Backup, restore, attach y detach no se ejecutan; requieren
@@ -173,7 +165,7 @@ export function LunarGripSsmsWorkbench({
         </span>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/60 overflow-hidden">
+      <div className="grid flex-1 grid-cols-1 divide-y divide-border/60 overflow-hidden md:grid-cols-2 md:divide-x md:divide-y-0">
         <div className="p-4 overflow-y-auto scrollbar-sleek">
           {tab === 'backup' ? (
             <SsmsBackupForm
@@ -224,7 +216,7 @@ export function LunarGripSsmsWorkbench({
           ) : null}
         </div>
 
-        <div className="flex flex-col h-full bg-muted/10 overflow-hidden">
+        <div className="flex h-full flex-col overflow-hidden bg-muted/10 backdrop-blur-sm">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 text-xs font-semibold text-muted-foreground bg-muted/20">
             <div className="flex items-center gap-1.5">
               <FileCode className="size-3.5 text-primary" />

@@ -3594,3 +3594,68 @@ html.native-shell.dark body {
     inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
+
+/* ── LunarGrip visual polish ────────────────────────────────────────────────
+   LunarGrip is a read-only data workbench that sits on the app shell. These
+   helpers keep its surfaces calm and layered: a soft jade/celeste ambient
+   wash, a faint canvas grid, an elegant translucent empty-state card, and the
+   spring-like easing the rest of the app already uses for interactions.
+   Every value derives from existing tokens via color-mix, so the theme owns
+   the palette; nothing here introduces a raw color. */
+.lunargrip-ambient {
+  background-image:
+    radial-gradient(
+      120% 90% at 8% -10%,
+      color-mix(in srgb, var(--primary) 9%, transparent),
+      transparent 46%
+    ),
+    radial-gradient(
+      90% 80% at 100% 0%,
+      color-mix(in srgb, var(--callout-important) 6%, transparent),
+      transparent 42%
+    );
+}
+
+.lunargrip-rail {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 7%, transparent),
+    transparent 62%
+  );
+}
+
+.lunargrip-canvas {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--border) 55%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.lunargrip-empty-card {
+  background: color-mix(in srgb, var(--card) 74%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  box-shadow: 0 20px 45px -28px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.lunargrip-spring {
+  transition-property: background-color, border-color, color, box-shadow, transform;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lunargrip-lift {
+  transition-property: transform, box-shadow, border-color, background-color;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lunargrip-lift:hover {
+  transform: translateY(-1px);
+}
+
+.lunargrip-lift:active {
+  transform: translateY(0);
+}
