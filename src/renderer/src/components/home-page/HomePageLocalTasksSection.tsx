@@ -12,14 +12,16 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TuiAgent } from '../../../../shared/tui-agent'
+import { buildOrcaTaskTraceabilityIndicators } from '../../../../shared/orca-task-traceability'
 import {
   TASK_DISPATCH_AGENTS,
   type TaskKanbanColumnId
 } from '@/components/task-page/task-kanban-defs'
-import type {
-  LocalProjectTask,
-  LocalTaskColumnId,
-  LocalTaskPriority
+import {
+  resolveLocalTaskTraceability,
+  type LocalProjectTask,
+  type LocalTaskColumnId,
+  type LocalTaskPriority
 } from '@/components/task-page/local-tasks-store'
 
 export type LocalTasksSummaryMetrics = {
@@ -343,6 +345,20 @@ export function HomePageLocalTasksSection({
                       style={{ width: `${Math.max(4, Math.min(100, task.progress))}%` }}
                     />
                   </div>
+                </div>
+
+                {/* Honest Traceability Indicators */}
+                <div className="flex flex-wrap items-center gap-1 pt-1.5">
+                  {buildOrcaTaskTraceabilityIndicators(resolveLocalTaskTraceability(task)).map(
+                    (indicator) => (
+                      <span
+                        key={indicator}
+                        className="rounded border border-border/50 bg-background/50 px-1.5 py-0.5 text-[9px] text-muted-foreground truncate max-w-full"
+                      >
+                        {indicator}
+                      </span>
+                    )
+                  )}
                 </div>
               </div>
 
