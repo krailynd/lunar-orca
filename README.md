@@ -58,6 +58,11 @@ databases and destructive commands are outside the current safety boundary.
 See [`LunarGrip-doc/README.md`](LunarGrip-doc/README.md) for the roadmap,
 state matrix, architecture and traceability documents.
 
+Task traceability is represented by a shared typed contract for projects, agents,
+executions, worktrees, commits, pull requests, artifacts, and dependencies.
+Missing references remain explicitly unavailable; PI/ODD remains authoritative
+for lifecycle, cancellation, questions, approvals, and completion.
+
 <p align="center">
   <sub><a href="docs/readme/README.zh-CN.md">中文</a> · <a href="docs/readme/README.ja.md">日本語</a> · <a href="docs/readme/README.ko.md">한국어</a> · <a href="docs/readme/README.es.md">Español</a> · <a href="docs/readme/README.fr.md">Français</a> · <a href="docs/readme/README.pt.md">Português</a></sub>
 </p>

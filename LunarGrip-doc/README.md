@@ -46,6 +46,7 @@ documentación operativa de `docs/` ni `docs-dev/`.
 | Sistema visual global | `37-sistema-visual-global-lunar-orca.md` |
 | Tokens y accesibilidad | `38-tokens-light-dark-y-accesibilidad.md` |
 | Estado de implementación y trazabilidad | `39-estado-de-implementacion-y-trazabilidad.md` |
+| Integración Orca, PI, ODD y trazabilidad | `40-integracion-orca-pi-odd-y-trazabilidad.md` |
 | Manuales de entrega | `manual-programador.md`, `manual-administrador.md`, `manual-cliente.md` |
 
 ## Estado documental
