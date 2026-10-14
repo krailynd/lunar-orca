@@ -42,11 +42,13 @@ pnpm tc:web
 pnpm run check:code-quality:changed
 ```
 
-Run the focused LunarGrip tests with:
+Run the focused LunarGrip and task traceability tests with:
 
 ```bash
 pnpm exec vitest run \
+  src/shared/orca-task-traceability.test.ts \
   src/renderer/src/components/lunargrip/lunargrip-ssms.test.ts \
+  src/renderer/src/components/lunargrip/lunargrip-status-labels.test.ts \
   src/main/lunargrip/lunargrip-validation.test.ts \
   src/main/lunargrip/lunargrip-provider.test.ts \
   src/main/lunargrip/lunargrip-errors.test.ts
