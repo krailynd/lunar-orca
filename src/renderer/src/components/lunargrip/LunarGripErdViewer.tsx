@@ -1,41 +1,122 @@
-import React from 'react'
-import type { SchemaTable } from './lunargrip-types'
-import { Key, Link2, ZoomIn, ZoomOut } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import type { DatabaseSchemaSnapshot, SchemaTable } from './lunargrip-types'
+import { Badge } from '@/components/ui/badge'
+import {
+  Crosshair,
+  Key,
+  Link2,
+  LocateFixed,
+  Maximize2,
+  Search,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
-export function LunarGripErdViewer({ tables }: { tables: SchemaTable[] }): React.JSX.Element {
+export function LunarGripErdViewer({
+  tables,
+  snapshot
+}: {
+  tables: SchemaTable[]
+  snapshot: DatabaseSchemaSnapshot
+}): React.JSX.Element {
+  const [scale, setScale] = useState(1)
+  const [filter, setFilter] = useState('')
+  const visibleTables = useMemo(
+    () =>
+      tables.filter((table) =>
+        `${table.schema}.${table.name}`.toLowerCase().includes(filter.toLowerCase())
+      ),
+    [filter, tables]
+  )
+  const relations = visibleTables.flatMap((table) =>
+    table.columns
+      .filter((column) => column.references)
+      .map(
+        (column) =>
+          `${table.schema}.${table.name}.${column.name} → ${column.references?.table}.${column.references?.column}`
+      )
+  )
   return (
-    <div className="flex flex-col h-full bg-background/50 overflow-hidden select-none">
-      <div className="flex items-center justify-between p-2.5 border-b border-border/60 bg-muted/20">
-        <div className="flex items-center gap-2">
+    <div className="flex h-full flex-col overflow-hidden bg-background select-none">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Link2 className="size-4 text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+          <span className="truncate text-xs font-semibold text-foreground">
             Diagrama ERD (Entidad - Relación)
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-            Esquema Vivo
-          </span>
+          <Badge variant="secondary">DEMO · Snapshot sintético · Sin conexión real</Badge>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="relative hidden md:block">
+            <Search className="absolute top-2 left-2 size-3.5" />
+            <Input
+              aria-label="Filtrar tablas del ERD"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="Filtrar tablas"
+            />
+          </div>
           <button
             type="button"
-            className="p-1 rounded hover:bg-muted/40 transition-colors"
-            title="Zoom In"
+            aria-label="Alejar"
+            onClick={() => setScale((value) => Math.max(0.7, value - 0.1))}
+            className="rounded p-1 hover:bg-muted"
+          >
+            <ZoomOut className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Acercar"
+            onClick={() => setScale((value) => Math.min(1.5, value + 0.1))}
+            className="rounded p-1 hover:bg-muted"
           >
             <ZoomIn className="size-3.5" />
           </button>
           <button
             type="button"
-            className="p-1 rounded hover:bg-muted/40 transition-colors"
-            title="Zoom Out"
+            aria-label="Centrar diagrama"
+            onClick={() => setScale(1)}
+            className="rounded p-1 hover:bg-muted"
           >
-            <ZoomOut className="size-3.5" />
+            <Crosshair className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Ajustar a pantalla"
+            onClick={() => setScale(0.85)}
+            className="rounded p-1 hover:bg-muted"
+          >
+            <Maximize2 className="size-3.5" />
           </button>
         </div>
       </div>
-
-      <div className="flex-1 overflow-auto p-6 scrollbar-sleek bg-radial from-muted/20 to-background/90">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {tables.map((table) => {
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-b border-border bg-card px-4 py-2 text-[11px] text-muted-foreground md:grid-cols-5">
+        <span>
+          Servidor: <strong className="text-foreground">{snapshot.server}</strong>
+        </span>
+        <span>
+          Base: <strong className="text-foreground">{snapshot.database}</strong>
+        </span>
+        <span>
+          Schema: <strong className="text-foreground">{snapshot.schema}</strong>
+        </span>
+        <span>
+          Snapshot: <strong className="text-foreground">Sintético</strong>
+        </span>
+        <span>
+          Fecha:{' '}
+          <strong className="text-foreground">
+            {new Date(snapshot.generatedAt).toLocaleDateString()}
+          </strong>
+        </span>
+      </div>
+      <div className="flex-1 overflow-auto p-6 scrollbar-sleek">
+        <div
+          className="mx-auto flex w-max origin-top-left flex-wrap gap-6"
+          style={{ transform: `scale(${scale})` }}
+        >
+          {visibleTables.map((table) => {
             const pkCount = table.columns.filter((c) => c.isPrimaryKey).length
             const fkCount = table.columns.filter((c) => c.isForeignKey).length
             return (
@@ -109,6 +190,18 @@ export function LunarGripErdViewer({ tables }: { tables: SchemaTable[] }): React
             )
           })}
         </div>
+      </div>
+      <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-2 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Key className="size-3 text-callout-important" /> PK
+        </span>
+        <span className="flex items-center gap-1">
+          <Link2 className="size-3 text-primary" /> FK
+        </span>
+        <span className="ml-auto">
+          <LocateFixed className="mr-1 inline size-3" />
+          {relations.length} relaciones deterministas
+        </span>
       </div>
     </div>
   )

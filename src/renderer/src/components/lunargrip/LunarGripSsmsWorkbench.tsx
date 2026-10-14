@@ -1,5 +1,14 @@
 import React, { useState } from 'react'
-import { Archive, Database, FileCode, HardDrive, Copy, Check, Play } from 'lucide-react'
+import {
+  Archive,
+  Database,
+  FileCode,
+  HardDrive,
+  Copy,
+  Check,
+  Play,
+  AlertTriangle
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   generateAttachDatabaseSql,
@@ -18,25 +27,24 @@ export function LunarGripSsmsWorkbench({
   activeDatabase: string
 }): React.JSX.Element {
   const [tab, setTab] = useState<SsmsTab>('backup')
-  const [db, setDb] = useState(activeDatabase || 'LunarDB')
-  const [bak, setBak] = useState('/var/opt/mssql/data/LunarDB_backup.bak')
+  const [db, setDb] = useState(activeDatabase || 'LunarGrip Demo')
+  const [bak, setBak] = useState('/demo/LunarGrip_backup.bak')
   const [format, setFormat] = useState(true)
   const [compress, setCompress] = useState(true)
   const [checksum, setChecksum] = useState(true)
 
-  const [dataLog, setDataLog] = useState('LunarDB_Data')
-  const [dataMdf, setDataMdf] = useState('/var/opt/mssql/data/LunarDB.mdf')
-  const [logLog, setLogLog] = useState('LunarDB_Log')
-  const [logLdf, setLogLdf] = useState('/var/opt/mssql/data/LunarDB_log.ldf')
+  const [dataLog, setDataLog] = useState('LunarGrip_Data')
+  const [dataMdf, setDataMdf] = useState('/demo/LunarGrip.mdf')
+  const [logLog, setLogLog] = useState('LunarGrip_Log')
+  const [logLdf, setLogLdf] = useState('/demo/LunarGrip_log.ldf')
   const [replace, setReplace] = useState(true)
 
-  const [mdf, setMdf] = useState('/var/opt/mssql/data/LunarDB.mdf')
-  const [ldf, setLdf] = useState('/var/opt/mssql/data/LunarDB_log.ldf')
+  const [mdf, setMdf] = useState('/demo/LunarGrip.mdf')
+  const [ldf, setLdf] = useState('/demo/LunarGrip_log.ldf')
   const [rebuild, setRebuild] = useState(false)
   const [dropConn, setDropConn] = useState(true)
 
   const [copied, setCopied] = useState(false)
-  const [isRunning, setIsRunning] = useState(false)
 
   const generatedSql = (() => {
     if (tab === 'backup') {
@@ -78,14 +86,6 @@ export function LunarGripSsmsWorkbench({
     setCopied(true)
     toast.success('Script T-SQL copiado')
     setTimeout(() => setCopied(false), 1500)
-  }
-
-  const handleRun = (): void => {
-    setIsRunning(true)
-    setTimeout(() => {
-      setIsRunning(false)
-      toast.success(`Operación ${tab.toUpperCase()} ejecutada con éxito`)
-    }, 500)
   }
 
   return (
@@ -156,14 +156,21 @@ export function LunarGripSsmsWorkbench({
           </button>
           <button
             type="button"
-            onClick={handleRun}
-            disabled={isRunning}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled
+            title="Disponible cuando exista una conexión real"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground"
           >
-            <Play className={`size-3.5 fill-current ${isRunning ? 'animate-pulse' : ''}`} />
-            <span>{isRunning ? 'Procesando...' : 'Ejecutar'}</span>
+            <Play className="size-3.5" />
+            <span>Ejecutar (pendiente)</span>
           </button>
         </div>
+      </div>
+      <div className="flex items-start gap-2 border-b border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-status-warning" />
+        <span>
+          Vista previa solamente. Backup, restore, attach y detach no se ejecutan; requieren
+          integración posterior y confirmación humana.
+        </span>
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/60 overflow-hidden">
@@ -224,7 +231,7 @@ export function LunarGripSsmsWorkbench({
               <span>Vista Previa del Script T-SQL</span>
             </div>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/40">
-              Copiloto Seguro
+              Vista previa solamente · Ejecución no disponible
             </span>
           </div>
           <div className="flex-1 p-3 overflow-auto font-mono text-[11px] text-foreground leading-relaxed scrollbar-sleek whitespace-pre">

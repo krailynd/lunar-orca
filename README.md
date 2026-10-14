@@ -18,6 +18,46 @@
 > **Modified by Krailynd / Lunar Orca (2026).**
 > **Lunar Orca** is a customized desktop fork of [**Orca**](https://github.com/stablyai/orca), originally created by **Lovecast Inc. (Stably AI)** and distributed under the [MIT License](LICENSE). This fork introduces the **Osaka Jade Neon Glass** aesthetic, native Linux Wayland alpha transparency, and custom workflow enhancements while preserving 100% compatibility with upstream protocols, daemon (`orcad`), and the official Orca Mobile Companion app. See [NOTICE](NOTICE) for attribution details.
 
+## Lunar Orca and LunarGrip
+
+Lunar Orca is a desktop IDE for coordinating AI agents, software projects,
+worktrees, terminals, editors, Git/GitHub review, tasks and operational
+documentation. The existing PI/ODD orchestration remains the authority for
+agent lifecycle, cancellation, approvals, checkpoints and audit evidence.
+
+LunarGrip is the integrated Data Workbench surface. Its current implementation
+provides an honest local demo: connection contracts and IPC safety boundaries,
+an Object Explorer, Monaco-based T-SQL editing, result/message/diagnostic
+states, deterministic ERD presentation and SSMS-style T-SQL preview. It does
+not connect to a database, execute SQL, persist credentials, or claim real
+metadata. Demo content is labelled `DEMO · Datos sintéticos · Sin conexión
+real`.
+
+### Development and verification
+
+```bash
+pnpm install
+pnpm dev
+pnpm tc:web
+pnpm run check:code-quality:changed
+```
+
+Run the focused LunarGrip tests with:
+
+```bash
+pnpm exec vitest run \
+  src/renderer/src/components/lunargrip/lunargrip-ssms.test.ts \
+  src/main/lunargrip/lunargrip-validation.test.ts \
+  src/main/lunargrip/lunargrip-provider.test.ts \
+  src/main/lunargrip/lunargrip-errors.test.ts
+```
+
+SQL Server support is intentionally limited to a future, read-only local
+provider. Remote hosts, SahaCloud, Tailscale, SSH tunnels, production
+databases and destructive commands are outside the current safety boundary.
+See [`LunarGrip-doc/README.md`](LunarGrip-doc/README.md) for the roadmap,
+state matrix, architecture and traceability documents.
+
 <p align="center">
   <sub><a href="docs/readme/README.zh-CN.md">中文</a> · <a href="docs/readme/README.ja.md">日本語</a> · <a href="docs/readme/README.ko.md">한국어</a> · <a href="docs/readme/README.es.md">Español</a> · <a href="docs/readme/README.fr.md">Français</a> · <a href="docs/readme/README.pt.md">Português</a></sub>
 </p>

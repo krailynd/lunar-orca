@@ -1,161 +1,205 @@
 import React, { useState } from 'react'
-import { Database, Terminal, Link2, HardDrive, RefreshCw, ShieldCheck, Server } from 'lucide-react'
-import { DEFAULT_DATABASE_CONNECTIONS, MOCK_DATABASE_SCHEMA } from './lunargrip-mock-data'
-import type { DatabaseConnection, SchemaTable } from './lunargrip-types'
+import {
+  Database,
+  HardDrive,
+  Link2,
+  Plus,
+  RefreshCw,
+  Server,
+  ShieldCheck,
+  Terminal
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { toast } from 'sonner'
+import { MOCK_DATABASE_SCHEMA } from './lunargrip-mock-data'
+import type { DatabaseConnection, SchemaTable, LunarGripUiState } from './lunargrip-types'
+import { LunarGripConnectionDialog } from './LunarGripConnectionDialog'
+import { LunarGripStatusBadge } from './LunarGripStatusBadge'
 import { LunarGripObjectExplorer } from './LunarGripObjectExplorer'
 import { LunarGripSqlEditor } from './LunarGripSqlEditor'
 import { LunarGripErdViewer } from './LunarGripErdViewer'
 import { LunarGripSsmsWorkbench } from './LunarGripSsmsWorkbench'
-import { toast } from 'sonner'
 
 export default function LunarGripPage(): React.JSX.Element {
-  const [connections] = useState<DatabaseConnection[]>(DEFAULT_DATABASE_CONNECTIONS)
-  const [activeConn, setActiveConn] = useState<DatabaseConnection>(DEFAULT_DATABASE_CONNECTIONS[0]!)
-  const [activeTab, setActiveTab] = useState<'editor' | 'erd' | 'ssms'>('editor')
-  const [selectedTable, setSelectedTable] = useState<SchemaTable | null>(
-    MOCK_DATABASE_SCHEMA.tables[0] ?? null
-  )
+  const [connectionDialogOpen, setConnectionDialogOpen] = useState(false)
+  const [uiState, setUiState] = useState<LunarGripUiState>('disconnected')
+  const [activeConnection, setActiveConnection] = useState<DatabaseConnection | null>(null)
+  const [selectedTable, setSelectedTable] = useState<SchemaTable | null>(null)
 
-  const handleRefresh = (): void => {
-    toast.success('Esquema de base de datos actualizado')
+  const openDemo = (): void => {
+    setActiveConnection(null)
+    setUiState('demo')
+    setSelectedTable(null)
+    setConnectionDialogOpen(false)
   }
 
+  const handleTestConnection = (connection: DatabaseConnection): void => {
+    setUiState('failed')
+    setConnectionDialogOpen(false)
+    toast.info('Conexión real no disponible', {
+      description: 'Falta el driver SQL Server. No se ejecutó SQL ni se abrió una conexión.'
+    })
+    setActiveConnection(connection)
+  }
+
+  const leaveDemo = (): void => {
+    setUiState('disconnected')
+    setActiveConnection(null)
+    setSelectedTable(null)
+  }
+
+  const showWorkbench =
+    uiState === 'demo' || uiState === 'connected' || uiState === 'partial' || uiState === 'stale'
+  const database =
+    uiState === 'demo' ? MOCK_DATABASE_SCHEMA.database : (activeConnection?.database ?? '')
+
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 bg-background/95 text-foreground select-none overflow-hidden">
-      {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-muted/20">
-        <div className="flex items-center gap-2.5">
-          <div className="size-7 rounded-lg bg-primary/15 text-primary border border-primary/25 flex items-center justify-center">
-            <Database className="size-4" />
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-md border border-border bg-card">
+            <Database className="size-4 text-primary" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-sm tracking-tight">LunarGrip</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono">
-                Data Workbench
-              </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold">LunarGrip</span>
+              <Badge variant="outline">Data Workbench</Badge>
+              <LunarGripStatusBadge state={uiState} />
             </div>
-            <p className="text-[11px] text-muted-foreground/80 leading-none">
-              Gestión de SQL Server, Esquemas ERD y Backups SSMS (.BAK / .MDF)
+            <p className="text-xs text-muted-foreground">
+              SQL Server local · sin ejecución SQL en esta fase
             </p>
           </div>
         </div>
-
-        {/* Server & Database Selector */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border/60 bg-muted/30 text-xs">
-            <Server className="size-3.5 text-primary shrink-0" />
-            <select
-              value={activeConn.id}
-              onChange={(e) => {
-                const found = connections.find((c) => c.id === e.target.value)
-                if (found) {
-                  setActiveConn(found)
-                  toast.success(`Conectado a ${found.name}`)
-                }
-              }}
-              className="bg-transparent text-xs font-medium outline-none cursor-pointer pr-1"
-            >
-              {connections.map((c) => (
-                <SelectItemEntry key={c.id} connection={c} />
-              ))}
-            </select>
+          {showWorkbench ? (
+            <>
+              <span className="hidden text-xs text-muted-foreground md:inline">
+                {uiState === 'demo'
+                  ? 'Datos sintéticos'
+                  : `${activeConnection?.host ?? 'Sin servidor'} · ${database}`}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setConnectionDialogOpen(true)}>
+                <Plus /> Nueva conexión
+              </Button>
+              {uiState === 'demo' ? (
+                <Button variant="ghost" size="sm" onClick={leaveDemo}>
+                  Salir de demo
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <Button size="sm" onClick={() => setConnectionDialogOpen(true)}>
+              <Plus /> Nueva conexión
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {!showWorkbench ? (
+        <DisconnectedState
+          onNewConnection={() => setConnectionDialogOpen(true)}
+          onOpenDemo={openDemo}
+          state={uiState}
+        />
+      ) : (
+        <Tabs defaultValue="editor" className="flex min-h-0 flex-1">
+          <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
+            <TabsList variant="line">
+              <TabsTrigger value="editor">
+                <Terminal /> Object Explorer & SQL
+              </TabsTrigger>
+              <TabsTrigger value="erd">
+                <Link2 /> Diagrama ERD
+              </TabsTrigger>
+              <TabsTrigger value="ssms">
+                <HardDrive /> SSMS Workbench
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="size-3.5" />
+              <span>{uiState === 'demo' ? 'Demo local' : 'Metadata no disponible'}</span>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="p-1.5 rounded-lg border border-border/60 hover:bg-muted/40 transition-colors"
-            title="Refrescar Esquema"
-          >
-            <RefreshCw className="size-3.5 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Subtabs Navigation */}
-      <div className="flex items-center justify-between px-4 py-1.5 border-b border-border/50 bg-muted/10 text-xs">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('editor')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all ${
-              activeTab === 'editor'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Terminal className="size-3.5" />
-            <span>Object Explorer & SQL</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('erd')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all ${
-              activeTab === 'erd'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Link2 className="size-3.5" />
-            <span>Diagrama ERD</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('ssms')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all ${
-              activeTab === 'ssms'
-                ? 'bg-primary/20 text-primary border border-primary/30 shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <HardDrive className="size-3.5" />
-            <span>SSMS Workbench (.BAK / .MDF)</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-status-success" />
-          <span>Copiloto de IA con Guardas de Seguridad</span>
-        </div>
-      </div>
-
-      {/* Main Workspace Body */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {activeTab === 'editor' && (
-          <div className="grid grid-cols-[240px_1fr] flex-1 min-h-0 overflow-hidden">
-            <LunarGripObjectExplorer
+          <TabsContent value="editor" className="min-h-0 flex-1">
+            <div className="grid h-full min-h-0 grid-cols-[260px_1fr]">
+              <LunarGripObjectExplorer
+                tables={MOCK_DATABASE_SCHEMA.tables}
+                selectedTable={selectedTable}
+                onSelectTable={setSelectedTable}
+                state={uiState}
+                database={database}
+              />
+              <LunarGripSqlEditor
+                selectedTable={selectedTable}
+                activeDatabase={database}
+                demo={uiState === 'demo'}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="erd" className="min-h-0 flex-1">
+            <LunarGripErdViewer
               tables={MOCK_DATABASE_SCHEMA.tables}
-              selectedTable={selectedTable}
-              onSelectTable={setSelectedTable}
+              snapshot={MOCK_DATABASE_SCHEMA}
             />
-            <LunarGripSqlEditor
-              selectedTable={selectedTable}
-              activeDatabase={activeConn.database}
-            />
-          </div>
-        )}
+          </TabsContent>
+          <TabsContent value="ssms" className="min-h-0 flex-1">
+            <LunarGripSsmsWorkbench activeDatabase={database || 'Sin conexión'} />
+          </TabsContent>
+        </Tabs>
+      )}
 
-        {activeTab === 'erd' && (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <LunarGripErdViewer tables={MOCK_DATABASE_SCHEMA.tables} />
-          </div>
-        )}
-
-        {activeTab === 'ssms' && (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <LunarGripSsmsWorkbench activeDatabase={activeConn.database} />
-          </div>
-        )}
-      </div>
+      <LunarGripConnectionDialog
+        open={connectionDialogOpen}
+        onOpenChange={setConnectionDialogOpen}
+        onOpenDemo={openDemo}
+        onTestConnection={handleTestConnection}
+      />
     </div>
   )
 }
 
-function SelectItemEntry({ connection }: { connection: DatabaseConnection }): React.JSX.Element {
+function DisconnectedState({
+  onNewConnection,
+  onOpenDemo,
+  state
+}: {
+  onNewConnection: () => void
+  onOpenDemo: () => void
+  state: LunarGripUiState
+}): React.JSX.Element {
   return (
-    <option value={connection.id} className="bg-popover text-popover-foreground">
-      {connection.name} ({connection.database})
-    </option>
+    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+      <div className="w-full max-w-xl rounded-lg border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-border bg-muted">
+          {state === 'failed' ? (
+            <RefreshCw className="size-6 text-destructive" />
+          ) : (
+            <Server className="size-6 text-muted-foreground" />
+          )}
+        </div>
+        <LunarGripStatusBadge state={state} />
+        <h1 className="mt-4 text-xl font-semibold">Conectá un servidor local para comenzar</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          No hay ninguna base seleccionada. La demo local es sintética y no representa una conexión
+          real.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button onClick={onNewConnection}>
+            <Plus /> Nueva conexión
+          </Button>
+          <Button variant="outline" onClick={onOpenDemo}>
+            <Database /> Abrir demo local
+          </Button>
+        </div>
+        {state === 'failed' ? (
+          <p className="mt-4 text-xs text-destructive">
+            La conexión real todavía no está disponible en LunarGrip.
+          </p>
+        ) : null}
+      </div>
+    </div>
   )
 }

@@ -1,147 +1,224 @@
-import React, { useState } from 'react'
-import type { SchemaTable } from './lunargrip-types'
-import { Play, Copy, Check, Terminal, Layers } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import Editor from '@monaco-editor/react'
+import type { OnMount } from '@monaco-editor/react'
+import { AlertCircle, Copy, Database, MessageSquare, Play, Terminal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
+import type { SchemaTable } from './lunargrip-types'
 
 export function LunarGripSqlEditor({
   selectedTable,
-  activeDatabase
+  activeDatabase,
+  demo
 }: {
   selectedTable: SchemaTable | null
   activeDatabase: string
+  demo: boolean
 }): React.JSX.Element {
-  const [sqlQuery, setSqlQuery] = useState(() =>
-    selectedTable
-      ? `SELECT TOP 50 *\nFROM [${selectedTable.schema}].[${selectedTable.name}];`
-      : 'SELECT @@VERSION AS [SQL_Server_Version];'
-  )
-  const [isRunning, setIsRunning] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [queryResults, setQueryResults] = useState<{
-    columns: string[]
-    rows: (string | number)[][]
-    elapsedMs: number
-  } | null>(null)
-
-  const handleRun = (): void => {
-    setIsRunning(true)
-    setTimeout(() => {
-      setIsRunning(false)
-      if (selectedTable) {
-        const cols = selectedTable.columns.map((c) => c.name)
-        const mockRows = Array.from({ length: 6 }).map((_, i) =>
-          cols.map((colName, cIdx) => (cIdx === 0 ? i + 1 : `Valor_${colName}_${i + 1}`))
-        )
-        setQueryResults({ columns: cols, rows: mockRows, elapsedMs: 14 })
-      } else {
-        setQueryResults({
-          columns: ['SQL_Server_Version'],
-          rows: [['Microsoft SQL Server 2022 (RTM-CU12) (KB5033663) - 16.0.4115.5']],
-          elapsedMs: 8
-        })
-      }
-      toast.success('Consulta ejecutada con éxito')
-    }, 280)
+  const [queries, setQueries] = useState(() => [
+    {
+      id: 'query-1',
+      name: 'Consulta 1',
+      value: selectedTable
+        ? `SELECT TOP 50 *\nFROM [${selectedTable.schema}].[${selectedTable.name}];`
+        : '-- Seleccioná una tabla para generar una consulta de ejemplo',
+      dirty: false
+    }
+  ])
+  const [activeQueryId, setActiveQueryId] = useState('query-1')
+  const activeQuery = queries.find((query) => query.id === activeQueryId) ?? queries[0]!
+  const sqlQuery = activeQuery.value
+  const setSqlQuery = (value: string): void => {
+    setQueries((current) =>
+      current.map((query) =>
+        query.id === activeQueryId ? { ...query, value, dirty: true } : query
+      )
+    )
   }
+  const [completionReady, setCompletionReady] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    const provider = monaco.languages.registerCompletionItemProvider('sql', {
+      provideCompletionItems: () => ({
+        suggestions: [
+          ...['SELECT', 'FROM', 'WHERE', 'JOIN', 'ORDER BY'].map((label) => ({
+            label,
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: label
+          })),
+          ...['Usuarios', 'Proyectos', 'Tareas'].map((label) => ({
+            label,
+            kind: monaco.languages.CompletionItemKind.Class,
+            insertText: label,
+            detail: 'Tabla demo'
+          })),
+          ...['id', 'nombre', 'created_at'].map((label) => ({
+            label,
+            kind: monaco.languages.CompletionItemKind.Field,
+            insertText: label,
+            detail: 'Columna demo'
+          })),
+          ...['COUNT', 'SUM', 'GETDATE'].map((label) => ({
+            label,
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: label,
+            detail: 'Función T-SQL demo'
+          }))
+        ]
+      })
+    })
+    editor.addAction({
+      id: 'lunargrip.show-completions',
+      label: 'Mostrar sugerencias demo',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP],
+      run: () => editor.trigger('keyboard', 'editor.action.triggerSuggest', {})
+    })
+    setCompletionReady(true)
+    void provider
+  }
+
+  useEffect(() => {
+    if (selectedTable) {
+      setQueries((current) =>
+        current.map((query) =>
+          query.id === activeQueryId
+            ? {
+                ...query,
+                value: `SELECT TOP 50 *\nFROM [${selectedTable.schema}].[${selectedTable.name}];`,
+                dirty: true
+              }
+            : query
+        )
+      )
+    }
+  }, [activeQueryId, selectedTable])
 
   const handleCopy = async (): Promise<void> => {
     await navigator.clipboard.writeText(sqlQuery)
     setCopied(true)
     toast.success('Script copiado al portapapeles')
-    setTimeout(() => setCopied(false), 1500)
+    window.setTimeout(() => setCopied(false), 1500)
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
-      {/* Editor Toolbar */}
-      <div className="flex items-center justify-between p-2.5 border-b border-border/60 bg-muted/20">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-background">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRun}
-            disabled={isRunning}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all active:scale-95 shadow-xs"
-          >
-            <Play className={`size-3.5 fill-current ${isRunning ? 'animate-pulse' : ''}`} />
-            <span>{isRunning ? 'Ejecutando...' : 'Ejecutar (F5)'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border/60 hover:bg-muted/40 transition-colors"
-          >
-            {copied ? (
-              <Check className="size-3 text-status-success" />
-            ) : (
-              <Copy className="size-3" />
-            )}
-            <span>Copiar SQL</span>
-          </button>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-          <span className="size-2 rounded-full bg-status-success animate-pulse" />
-          <span>{activeDatabase}</span>
-        </div>
-      </div>
-
-      {/* Editor Textarea */}
-      <div className="flex-1 min-h-[160px] p-3 font-mono text-xs bg-muted/10">
-        <textarea
-          value={sqlQuery}
-          onChange={(e) => setSqlQuery(e.target.value)}
-          spellCheck={false}
-          className="size-full bg-transparent resize-none outline-none font-mono text-foreground leading-relaxed selection:bg-primary/30"
-          placeholder="Escribí tu consulta T-SQL acá..."
-        />
-      </div>
-
-      {/* Results View */}
-      <div className="h-[220px] min-h-[140px] border-t border-border/60 flex flex-col bg-card/60">
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40 text-[11px] font-semibold text-muted-foreground bg-muted/30">
-          <div className="flex items-center gap-1.5">
-            <Terminal className="size-3 text-primary" />
-            <span>Resultados</span>
+          <div className="flex items-center gap-1">
+            {queries.map((query) => (
+              <Button
+                key={query.id}
+                variant={query.id === activeQueryId ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveQueryId(query.id)}
+              >
+                {query.name}
+                {query.dirty ? ' *' : ''}
+              </Button>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const id = `query-${queries.length + 1}`
+                setQueries((current) => [
+                  ...current,
+                  { id, name: `Consulta ${current.length + 1}`, value: '', dirty: false }
+                ])
+                setActiveQueryId(id)
+              }}
+            >
+              +
+            </Button>
           </div>
-          {queryResults ? (
-            <span className="font-mono text-[10px]">
-              {queryResults.rows.length} filas ({queryResults.elapsedMs} ms)
-            </span>
-          ) : null}
+          <span className="text-xs text-muted-foreground">
+            {activeQuery.dirty ? 'Sin guardar' : 'Guardada'} ·{' '}
+            {completionReady ? 'Sugerencias demo' : 'Editor cargando'}
+          </span>
+          {demo ? <Badge variant="secondary">Demo</Badge> : null}
         </div>
-
-        <div className="flex-1 overflow-auto scrollbar-sleek p-2">
-          {queryResults ? (
-            <table className="w-full text-left font-mono text-[11px] border-collapse">
-              <thead>
-                <tr className="border-b border-border/60">
-                  {queryResults.columns.map((col) => (
-                    <th key={col} className="p-1.5 font-bold text-foreground/80 bg-muted/40">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {queryResults.rows.map((row, rIdx) => (
-                  <tr
-                    key={String(rIdx)}
-                    className="border-b border-border/30 hover:bg-muted/30 transition-colors"
-                  >
-                    {row.map((cell, cIdx) => (
-                      <td key={String(cIdx)} className="p-1.5 text-muted-foreground">
-                        {String(cell)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="flex items-center justify-center size-full text-xs text-muted-foreground/60 gap-1.5">
-              <Layers className="size-4 opacity-40" />
-              <span>Ejecutá una consulta para ver los resultados tabulares</span>
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="hidden text-xs text-muted-foreground md:inline">
+            {activeDatabase || 'Sin base seleccionada'}
+          </span>
+          <Button variant="outline" size="sm" onClick={handleCopy}>
+            <Copy /> {copied ? 'Copiado' : 'Copiar'}
+          </Button>
+          <Button size="sm" disabled title="Disponible cuando exista una conexión real">
+            <Play /> Ejecutar
+          </Button>
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-[220px] flex-1 flex-col border-b border-border">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+            <Terminal className="size-3.5" />
+            <span>SQL · T-SQL</span>
+            <span className="ml-auto">Ctrl/Cmd+Enter disponible con conexión real</span>
+          </div>
+          <div className="min-h-0 flex-1">
+            <Editor
+              height="100%"
+              language="sql"
+              theme="vs-dark"
+              value={sqlQuery}
+              onChange={(value) => setSqlQuery(value ?? '')}
+              onMount={handleEditorMount}
+              options={{
+                minimap: { enabled: false },
+                lineNumbers: 'on',
+                wordWrap: 'on',
+                fontSize: 13,
+                padding: { top: 12 },
+                readOnly: false,
+                suggestOnTriggerCharacters: true
+              }}
+            />
+          </div>
+        </div>
+        <div className="h-[220px] min-h-[170px]">
+          <Tabs defaultValue="results" className="h-full">
+            <TabsList variant="line">
+              <TabsTrigger value="results">
+                <Database /> Resultados
+              </TabsTrigger>
+              <TabsTrigger value="messages">
+                <MessageSquare /> Mensajes
+              </TabsTrigger>
+              <TabsTrigger value="diagnostics">
+                <AlertCircle /> Diagnósticos
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="results" className="h-[calc(100%-2.25rem)]">
+              <div className="flex h-full items-center justify-center gap-2 p-4 text-xs text-muted-foreground">
+                <Database className="size-4" />
+                <span>
+                  {demo
+                    ? 'DEMO · Datos sintéticos · Sin conexión real. No se ejecutan consultas.'
+                    : 'Sin conexión y sin resultados.'}
+                </span>
+              </div>
+            </TabsContent>
+            <TabsContent value="messages" className="h-[calc(100%-2.25rem)]">
+              <div className="flex h-full items-center gap-2 p-4 text-xs text-muted-foreground">
+                <MessageSquare className="size-4" />
+                <span>Ejecución no disponible: no hay conexión real.</span>
+              </div>
+            </TabsContent>
+            <TabsContent value="diagnostics" className="h-[calc(100%-2.25rem)]">
+              <div className="flex h-full items-center gap-2 p-4 text-xs text-muted-foreground">
+                <AlertCircle className="size-4" />
+                <span>
+                  {demo
+                    ? 'Diagnósticos demo: no hay análisis de servidor disponible.'
+                    : 'No hay diagnósticos porque no existe una conexión real.'}
+                </span>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

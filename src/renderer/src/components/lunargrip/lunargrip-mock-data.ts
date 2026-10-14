@@ -8,25 +8,19 @@ export const DEFAULT_DATABASE_CONNECTIONS: DatabaseConnection[] = [
     host: 'localhost',
     port: 1433,
     database: 'LunarDB',
-    username: 'sa',
+    username: 'demo_user',
     isRemote: false
-  },
-  {
-    id: 'conn-sahacloud-sqlserver',
-    name: 'SQL Server (SahaCloud Tailscale)',
-    engine: 'sqlserver',
-    host: '100.106.162.119',
-    port: 1433,
-    database: 'SahaCommerce',
-    username: 'sahacloud_admin',
-    isRemote: true
   }
 ]
 
 export const MOCK_DATABASE_SCHEMA: DatabaseSchemaSnapshot = {
-  database: 'LunarDB',
+  database: 'LunarGrip Demo',
   engine: 'sqlserver',
   generatedAt: Date.now(),
+  server: 'Demo local',
+  schema: 'dbo',
+  source: 'demo',
+  status: 'demo',
   tables: [
     {
       schema: 'dbo',

@@ -12,6 +12,16 @@ export type DatabaseConnection = {
   lastConnected?: number
 }
 
+export type LunarGripUiState =
+  | 'disconnected'
+  | 'configuring'
+  | 'connected'
+  | 'loading'
+  | 'partial'
+  | 'stale'
+  | 'failed'
+  | 'demo'
+
 export type TableColumn = {
   name: string
   type: string
@@ -33,6 +43,10 @@ export type DatabaseSchemaSnapshot = {
   engine: DatabaseEngine
   tables: SchemaTable[]
   generatedAt: number
+  server: string
+  schema: string
+  source: 'demo' | 'real'
+  status: Extract<LunarGripUiState, 'connected' | 'partial' | 'stale' | 'demo'>
 }
 
 export type BakFileInspection = {
