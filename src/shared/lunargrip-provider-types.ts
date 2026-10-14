@@ -1,6 +1,7 @@
 export type LunarGripConnectionStatus =
   | 'connected'
   | 'disconnected'
+  | 'connecting'
   | 'loading'
   | 'partial'
   | 'stale'

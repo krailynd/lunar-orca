@@ -5,6 +5,7 @@ import type { LunarGripUiState } from './lunargrip-types'
 const labels: Record<LunarGripUiState, string> = {
   disconnected: 'Sin conexión',
   configuring: 'Configurando',
+  connecting: 'Conectando',
   connected: 'Conectada',
   loading: 'Cargando metadata',
   partial: 'Metadata parcial',

@@ -15,6 +15,7 @@ export type DatabaseConnection = {
 export type LunarGripUiState =
   | 'disconnected'
   | 'configuring'
+  | 'connecting'
   | 'connected'
   | 'loading'
   | 'partial'
