@@ -25,6 +25,30 @@ worktrees, terminals, editors, Git/GitHub review, tasks and operational
 documentation. The existing PI/ODD orchestration remains the authority for
 agent lifecycle, cancellation, approvals, checkpoints and audit evidence.
 
+### Agents Office 3D (Pixel Office Engine)
+
+Integrated Three.js WebGL isometric pixel office environment for real-time multi-agent spatial coordination:
+- **Lead-First Dynamic Layout**: Offices initialize with only the primary lead orchestrator seated at the primary desk (`seat: 0`), keeping the space focused and minimal.
+- **On-Demand Subagent Spawning**: When subagents are dispatched via `subagent_run` or live worker processes, the subagent character enters through the main door (`office.layout.entry`), greets the room, and navigates to an open desk.
+- **Interactive Task Handover**: The lead orchestrator stands up, walks over to the newly assigned subagent, delivers the task with physical paper particle physics (`fx: 'paper'`) and speech balloons, before returning to the lead desk.
+- **Completion & Departure**: Upon completing the task, the subagent triggers a celebration particle effect (`fx: 'sparkle'`), bids farewell, walks back to the office exit, and cleanly vanishes, freeing the desk.
+
+### Orlack Workspace Chat
+
+A collaborative project messaging and live session stream interface connected to your active worktrees:
+- **Dynamic Worktree Channels**: Every worktree in Lunar Orca automatically generates its dedicated channel, persisting state and message history across app navigation.
+- **Native Pi Session Streaming**: Directly tails and ingests real-time Pi coding agent session logs (`~/.pi/agent/sessions/--<encoded-cwd>--/*.jsonl`) into the active channel.
+- **Traceable Turn Rendering**: Displays authentic user prompts with terminal session badges (`sessionId`), assistant responses, structured subagent delegation cards (`subagent_run`), and execution badges (`subagent-badge`) detailing model, execution duration, and pass/fail verdicts.
+- **Categorized Agent Roster**: Sidebar neatly groups active participants into *Orquestador Principal*, *Subagentes Delegados* (with dynamic live worker counters), and *Equipo Humano*.
+
+### Upstream Orca Synchronization & Architecture
+
+Lunar Orca is maintained as an upstream-compatible fork of [**stablyai/orca**](https://github.com/stablyai/orca).
+- **Official Mobile Companion & Relay Compatibility**: Preserves 100% wire-protocol compatibility with the official Orca Mobile app (iOS and Android). Connect via local Wi-Fi / Tailscale or Orca Cloud Relay.
+- **Standardized Sync Workflow**: Follows the frozen sync protocol detailed in [`docs-dev/SYNC.md`](docs-dev/SYNC.md). Upstream releases are integrated from stable tagged releases (`v1.4.x`), safeguarding custom branding, Wayland transparency, privacy (zero telemetry), and Lunar-specific interfaces.
+
+### LunarGrip Data Workbench
+
 LunarGrip is the integrated Data Workbench surface. Its current implementation
 provides an honest local demo: connection contracts and IPC safety boundaries,
 an Object Explorer, Monaco-based T-SQL editing, result/message/diagnostic

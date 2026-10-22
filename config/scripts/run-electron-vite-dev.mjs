@@ -89,6 +89,9 @@ function seedDevInstanceIdentityEnv() {
   const identitySeed = process.env.ORCA_DEV_INSTANCE_KEY || repoRoot
   const dockTitle = process.env.ORCA_DEV_DOCK_TITLE || createDockTitle(branch, label)
 
+  process.env.ORCA_CLOUD_API_URL ||= 'https://login.onorca.dev'
+  process.env.ORCA_CLOUD_CLIENT_ID ||= 'orca-desktop'
+
   process.env.ORCA_DEV_REPO_ROOT ||= repoRoot
   process.env.ORCA_DEV_INSTANCE_KEY ||= identitySeed
   if (branch) {
