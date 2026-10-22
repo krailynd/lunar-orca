@@ -52,6 +52,9 @@ export function runLocalLinuxBuild({
   } else {
     delete env.ORCA_LINUX_ARM64_RELEASE
   }
+  // Why: on modern rolling-release distributions (Arch Linux, Fedora, Debian Sid), native packages
+  // compiled against the host glibc (e.g. >= 2.38) must not fail local build packaging.
+  env.ORCA_SKIP_GLIBC_FLOOR ||= '1'
   const pnpm = platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
   execFile(pnpm, buildLinuxElectronBuilderArgs(arch, extraArgs), {
     cwd,
