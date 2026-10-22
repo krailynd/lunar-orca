@@ -12,7 +12,7 @@ import type {
 } from '../../shared/lunargrip-provider-types'
 import { abortWhenRendererGone } from './renderer-lifetime-abort'
 import { toSafeLunarGripProviderError } from '../lunargrip/lunargrip-errors'
-import { TediousLunarGripProvider } from '../lunargrip/tedious-provider'
+import { DemoLunarGripProvider } from '../lunargrip/lunargrip-provider'
 import {
   isProviderError,
   validateLocalSqlServerConnection
@@ -28,7 +28,7 @@ type ExecuteSqlPayload = {
 }
 
 export function registerLunarGripHandlers(
-  provider: LunarGripProvider = new TediousLunarGripProvider()
+  provider: LunarGripProvider = new DemoLunarGripProvider()
 ): void {
   ipcMain.removeHandler(LUNARGRIP_TEST_CONNECTION_CHANNEL)
   ipcMain.removeHandler(LUNARGRIP_READ_SCHEMA_CHANNEL)
