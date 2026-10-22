@@ -80,16 +80,24 @@ export class ThreeOffice extends ThreeOfficeScene {
     this.bgMesh.position.set(L.width / 2, -L.height / 2, 0)
 
     if (bgChanged) {
-      new THREE.TextureLoader().load(L.background, (t) => {
+      const img = new Image()
+      img.onload = () => {
+        const t = new THREE.Texture(img)
         t.colorSpace = THREE.SRGBColorSpace
         t.anisotropy = 4
+        t.needsUpdate = true
         this.bgTex = t
         this.bgMesh.material.map = t
+        this.bgMesh.material.color.setHex(0xffffff)
         this.bgMesh.material.needsUpdate = true
         for (const v of this.chars.values()) {
           this.attachChairTexture(v)
         }
-      })
+      }
+      img.onerror = (e) => {
+        console.error('[AgentsOffice] Image load error for background:', e)
+      }
+      img.src = L.background
     }
 
     const updated = updateOfficeLightsAndRays(

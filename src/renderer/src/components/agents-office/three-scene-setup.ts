@@ -63,7 +63,7 @@ export class ThreeOfficeScene {
     this.camera = new THREE.OrthographicCamera(0, 1, 0, -1, -10, 10)
     this.bgMesh = new THREE.Mesh(
       plane,
-      new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color: 0x1a1a24, depthTest: false, depthWrite: false })
     )
     this.bgMesh.renderOrder = 0
     this.scene.add(this.bgMesh)

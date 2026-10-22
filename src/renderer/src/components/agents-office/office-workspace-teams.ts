@@ -1,9 +1,10 @@
 import type { Layout, PublicOffice } from './types'
 import { buildDynamicOffice } from './office-dynamic-generator'
+import officeBgImage from '@/assets/office-bg.png'
 export { buildDynamicOffice } from './office-dynamic-generator'
 
 export const PIXEL_OFFICE_LAYOUT: Layout = {
-  background: '/office/office-bg.png',
+  background: officeBgImage,
   width: 1672,
   height: 940,
   entry: { x: 838, y: 915 },

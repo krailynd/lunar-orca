@@ -82,17 +82,7 @@ function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element 
       {activeView === 'mobile' ? <MobilePage /> : null}
       {activeView === 'home' ? <HomePage /> : null}
       {activeView === 'lunargrip' ? <LunarGripPage /> : null}
-      {/* Why: Keep AgentsOffice mounted once visited so simulation, Three.js context and character states persist seamlessly */}
-      <div
-        className={
-          activeView === 'agents-office'
-            ? 'flex flex-1 min-w-0 min-h-0 w-full h-full'
-            : 'hidden flex-1 min-w-0 min-h-0'
-        }
-        aria-hidden={activeView !== 'agents-office'}
-      >
-        <AgentsOfficePage />
-      </div>
+      {activeView === 'agents-office' ? <AgentsOfficePage /> : null}
       {activeView === 'orlack' ? <OrlackPage /> : null}
       {activeView === 'terminal' && creationLayoutActive && activePendingCreationId ? (
         <WorktreeCreationPanel
