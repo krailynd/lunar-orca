@@ -7,6 +7,8 @@ import {
   AgentLetterIcon,
   AiderIcon,
   CopilotIcon,
+  HerdrIcon,
+  HermesIcon,
   KiloIcon,
   OmpIcon,
   OpenCodeIcon,
@@ -79,6 +81,12 @@ export function AgentIcon({
   }
   if (agent === 'opencode' || agent === 'opencode2') {
     return <OpenCodeIcon size={size} />
+  }
+  if (agent === 'herdr') {
+    return <HerdrIcon size={size} />
+  }
+  if (agent === 'hermes') {
+    return <HermesIcon size={size} />
   }
   const catalogEntry = getAgentCatalog().find((a) => a.id === agent)
   // Why: prefer the favicon bundled at build time so the icon renders without a

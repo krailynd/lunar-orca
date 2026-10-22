@@ -171,13 +171,26 @@ describe('resolveQuickCreateLinkedWorkItemPrompt', () => {
     expectNoProductWorkflowDirection(result.draftPrompt)
   })
 
-  it('falls back to typed-only note when no identifier or URL is usable', () => {
+  it('preserves a typed-only note as the draft when no identifier or URL is usable', () => {
     expect(
       resolveQuickCreateLinkedWorkItemPrompt(
         { provider: 'linear', number: 0, url: '' },
         '  use this note  '
       )
-    ).toEqual({ prompt: 'use this note', draftPrompt: null })
+    ).toEqual({ prompt: '', draftPrompt: 'use this note' })
+  })
+
+  it('preserves a typed note when no linked work item exists', () => {
+    expect(resolveQuickCreateLinkedWorkItemPrompt(null, '  dispatch this task  ')).toEqual({
+      prompt: '',
+      draftPrompt: 'dispatch this task'
+    })
+  })
+
+  it('preserves a typed note for a non-Linear item without a URL', () => {
+    expect(
+      resolveQuickCreateLinkedWorkItemPrompt({ number: 7, url: '   ' }, 'fix the flaky test')
+    ).toEqual({ prompt: '', draftPrompt: 'fix the flaky test' })
   })
 
   it('drafts the note above a labeled Linear URL when the identifier is missing', () => {

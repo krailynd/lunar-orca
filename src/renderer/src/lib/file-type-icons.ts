@@ -57,3 +57,10 @@ export function getFileTypeIcon(filePath: string | undefined | null): LucideIcon
   // where OS-native file associations are not available.
   return FILE_ICON_BY_EXTENSION[getExtension(filename)] ?? File
 }
+
+export {
+  MaterialFileIcon,
+  MaterialFolderIcon,
+  getMaterialFileIconSpec
+} from './material-file-icons'
+export type { MaterialFileIconSpec } from './material-file-icons'

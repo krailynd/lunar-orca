@@ -76,6 +76,13 @@ export function classifyAntigravityUsageFailure(output: string): AntigravityUsag
     }
   }
   const lowered = output.toLowerCase()
+  if (
+    lowered.includes('permission_denied') ||
+    lowered.includes('violation of terms of service') ||
+    lowered.includes('disabled in this account')
+  ) {
+    return { failureKind: 'no-subscription', signedOut: false }
+  }
   if (SIGNED_OUT_PHRASES.some((phrase) => lowered.includes(phrase))) {
     return { failureKind: 'missing-credentials', signedOut: true }
   }

@@ -87,15 +87,9 @@ export function VaultScopeSwitch({
   projectAvailable: boolean
   onScopeChange: (scope: AiVaultScope) => void
 }): React.JSX.Element {
-  const workspaceLabel = translate(
-    'auto.components.right.sidebar.AiVaultPanelControls.workspaceScope',
-    'Workspace'
-  )
-  const projectLabel = translate(
-    'auto.components.right.sidebar.AiVaultPanelControls.projectScope',
-    'Project'
-  )
-  const allLabel = translate('auto.components.right.sidebar.AiVaultPanelControls.allScope', 'All')
+  const workspaceLabel = 'Workspace'
+  const projectLabel = 'Proyecto'
+  const allLabel = 'Todo'
 
   return (
     <ToggleGroup
@@ -108,27 +102,7 @@ export function VaultScopeSwitch({
       }}
       variant="outline"
       className="h-7 w-full rounded-md border border-sidebar-border bg-sidebar-accent/35 shadow-xs"
-      aria-label={translate(
-        'auto.components.right.sidebar.AiVaultPanelControls.scopeAriaLabel',
-        'Session History scope: {{value0}}',
-        {
-          value0:
-            scope === 'workspace'
-              ? translate(
-                  'auto.components.right.sidebar.AiVaultPanelControls.currentWorkspaceLower',
-                  'current workspace'
-                )
-              : scope === 'project'
-                ? translate(
-                    'auto.components.right.sidebar.AiVaultPanelControls.currentProjectLower',
-                    'current project'
-                  )
-                : translate(
-                    'auto.components.right.sidebar.AiVaultPanelControls.allSessionsLower',
-                    'all sessions'
-                  )
-        }
-      )}
+      aria-label={`Filtro de sesiones: ${scope}`}
     >
       <ToggleGroupItem
         value="workspace"

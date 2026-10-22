@@ -75,41 +75,36 @@ export function AiVaultPanelHeader({
     }
   }, [focusSearchRequestId])
   return (
-    <div className="shrink-0 border-b border-sidebar-border px-2.5 py-2">
-      <div className="flex items-center gap-1.5">
+    <div className="shrink-0 border-b border-sidebar-border px-3 py-2.5 bg-sidebar/80 backdrop-blur-md">
+      <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="truncate text-xs font-semibold text-foreground">
-              {/* Why: below 300px the header competes with fixed controls, so compact copy prevents overlap. */}
-              <span className="@max-[300px]/ai-vault:hidden">
-                {translate(
-                  'auto.components.right.sidebar.AiVaultPanel.sessionHistory',
-                  'Agent Session History'
-                )}
-              </span>
-              <span className="hidden @max-[300px]/ai-vault:inline">
-                {translate('auto.components.right.sidebar.AiVaultPanel.agents', 'Agents')}
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <span className="truncate text-xs font-semibold text-foreground tracking-tight">
+              {translate(
+                'auto.components.right.sidebar.AiVaultPanel.sessionHistory',
+                'Historial de Agentes'
+              )}
+            </span>
             {activeProjectLabel ? (
               <span
-                className="shrink-0 truncate max-w-[140px] rounded border border-workspace-status-review/35 bg-workspace-status-review/10 px-1.5 py-0.5 text-[10px] font-medium text-status-success"
+                className="inline-flex items-center gap-1 shrink-0 truncate max-w-[150px] rounded-full border border-workspace-status-review/30 bg-workspace-status-review/10 px-2 py-0.5 text-[10px] font-medium text-workspace-status-review shadow-xs"
                 title={`Proyecto: ${activeProjectLabel}`}
               >
-                {`[Proyecto: ${activeProjectLabel}]`}
+                <span className="size-1.5 rounded-full bg-workspace-status-review" />
+                <span className="truncate">{activeProjectLabel}</span>
               </span>
             ) : null}
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">
+          <div className="mt-0.5 truncate text-[10px] text-muted-foreground/75 font-mono">
             {searching || hasScanResult
-              ? translate('sessionSearch.panel.indexedHistory', 'Indexed history')
+              ? translate('sessionSearch.panel.indexedHistory', 'Historial indexado')
               : translate(
                   'auto.components.right.sidebar.AiVaultPanel.resumePastSessions',
-                  'Resume past sessions'
+                  'Reanudar sesiones activas o pasadas'
                 )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1 @max-[300px]/ai-vault:gap-0.5">
+        <div className="flex shrink-0 items-center gap-1">
           <VaultHostScopeMenu
             executionHostScope={executionHostScope}
             hostOptions={hostScopeOptions}
@@ -143,7 +138,7 @@ export function AiVaultPanelHeader({
             className="size-6"
           >
             {loading ? (
-              <LoaderCircle className="size-3 animate-spin" />
+              <LoaderCircle className="size-3 animate-spin text-primary" />
             ) : (
               <RefreshCw className="size-3" />
             )}
@@ -151,7 +146,7 @@ export function AiVaultPanelHeader({
         </div>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-2.5">
         <VaultScopeSwitch
           scope={scope}
           workspaceAvailable={Boolean(activeWorktreePath)}
@@ -160,17 +155,17 @@ export function AiVaultPanelHeader({
         />
       </div>
 
-      <div className="mt-2 flex h-8 items-center gap-1.5 rounded-md border border-sidebar-border bg-input/50 px-2 focus-within:border-sidebar-ring focus-within:ring-[2px] focus-within:ring-sidebar-ring/30">
-        <Search className="size-3.5 shrink-0 text-muted-foreground" />
+      <div className="mt-2 flex h-7 items-center gap-1.5 rounded-md border border-sidebar-border bg-input/40 px-2 transition-colors focus-within:border-primary/50 focus-within:bg-input/70">
+        <Search className="size-3 shrink-0 text-muted-foreground" />
         <ImeInput
           ref={searchInputRef}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={translate(
             'auto.components.right.sidebar.AiVaultPanel.searchSessions',
-            'Search sessions'
+            'Buscar sesiones de agentes...'
           )}
-          className="min-w-0 flex-1 bg-transparent py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+          className="min-w-0 flex-1 bg-transparent py-1 text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
           aria-label={translate(
             'auto.components.right.sidebar.AiVaultPanel.searchSessions',
             'Search sessions'
@@ -189,7 +184,7 @@ export function AiVaultPanelHeader({
             type="button"
             variant="ghost"
             size="icon-xs"
-            className="size-5 rounded-sm text-muted-foreground hover:text-foreground"
+            className="size-4.5"
             onClick={() => onQueryChange('')}
             aria-label={translate(
               'auto.components.right.sidebar.AiVaultPanel.clearSearch',

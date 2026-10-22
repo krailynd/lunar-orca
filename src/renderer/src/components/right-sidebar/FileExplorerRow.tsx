@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { cn } from '@/lib/utils'
-import { getFileTypeIcon } from '@/lib/file-type-icons'
+import { MaterialFileIcon } from '@/lib/material-file-icons'
 import {
   encodeWorkspaceFilePaths,
   WORKSPACE_FILE_PATH_MIME,
@@ -125,8 +125,15 @@ export function FileExplorerRow({
   onNativeDragTargetChange,
   onNativeDragExpandDir
 }: FileExplorerRowProps): React.JSX.Element {
-  const FileIcon = getFileTypeIcon(node.relativePath || node.name)
   const showLoadError = node.isDirectory && isExpanded && !isLoading && loadError !== null
+  // Why: a stable element identity lets React skip reconciling the icon subtree when
+  // only unrelated row state changes while scrolling directories with many entries.
+  const fileIconElement = React.useMemo(
+    () => (
+      <MaterialFileIcon filePath={node.relativePath || node.name} className="size-4 shrink-0" />
+    ),
+    [node.relativePath, node.name]
+  )
   const rowDropDir = node.isDirectory ? node.path : targetDir
   const { setRowDragNode, handleDragOver, handleDragEnter, handleDragLeave, handleDrop } =
     useFileExplorerRowDrag({
@@ -230,9 +237,7 @@ export function FileExplorerRow({
               {node.isSymlink ? (
                 <Link className="size-3 shrink-0 text-muted-foreground" />
               ) : (
-                React.createElement(FileIcon, {
-                  className: 'size-3 shrink-0 text-muted-foreground'
-                })
+                fileIconElement
               )}
             </>
           )}

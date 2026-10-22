@@ -137,6 +137,48 @@ export function OpenCodeIcon({ size = 14 }: { size?: number }): React.JSX.Elemen
   )
 }
 
+export function HerdrIcon({ size = 14 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="text-current"
+    >
+      <path d="M12 2a4 4 0 0 0-4 4v2a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4Z" />
+      <path d="M6 10v1a6 6 0 0 0 12 0v-1" />
+      <path d="M4 18a8 8 0 0 1 16 0v2H4v-2Z" />
+    </svg>
+  )
+}
+
+export function HermesIcon({ size = 14 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="text-current"
+    >
+      <path d="m13 2-2 2.5V8l3-1 2 2-1 3 3.5 2L20 13l2-2" />
+      <path d="m2 13 3.5-2L7 14l2-2 3 1v3.5L10 19l2 3" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 export function AgentLetterIcon({
   letter,
   size = 14

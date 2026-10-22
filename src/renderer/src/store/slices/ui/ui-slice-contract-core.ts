@@ -125,6 +125,8 @@ export type UiViewHistory =
   | 'mobile'
   | 'home'
   | 'lunargrip'
+  | 'agents-office'
+  | 'orlack'
 
 export type UISliceCore = {
   sidebarOpen: boolean
@@ -214,6 +216,10 @@ export type UISliceCore = {
   closeHomePage: () => void
   openLunarGripPage: () => void
   closeLunarGripPage: () => void
+  openAgentsOfficePage: () => void
+  closeAgentsOfficePage: () => void
+  openOrlackPage: () => void
+  closeOrlackPage: () => void
   setNewWorkspaceDraft: (draft: NonNullable<UISliceCore['newWorkspaceDraft']>) => void
   clearNewWorkspaceDraft: () => void
   pendingRevealWorktree: PendingSidebarWorktreeReveal | null

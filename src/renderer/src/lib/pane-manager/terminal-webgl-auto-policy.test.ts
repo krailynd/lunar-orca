@@ -119,16 +119,19 @@ describe('terminal WebGL auto policy', () => {
     })
   })
 
-  it('keeps Linux auto panes on DOM for Wayland before probing WebGL', () => {
+  it('allows Linux auto panes on Wayland for identifiable hardware renderers', () => {
     stubNavigator('Linux x86_64', 'Mozilla/5.0 (X11; Linux x86_64)')
     stubDisplayServer('wayland')
-    stubNoDocument()
+    stubWebglRendererInfo({
+      renderer: 'Mesa Intel(R) UHD Graphics 770 (ADL-S GT1)',
+      vendor: 'Intel'
+    })
 
     expect(getTerminalWebglAutoDecision()).toEqual({
-      allowWebgl: false,
-      reason: 'linux-wayland',
-      renderer: null,
-      vendor: null
+      allowWebgl: true,
+      reason: 'linux-hardware-renderer',
+      renderer: 'Mesa Intel(R) UHD Graphics 770 (ADL-S GT1)',
+      vendor: 'Intel'
     })
   })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isProviderError, validateLocalSqlServerConnection } from './lunargrip-validation'
 
-describe('LunarGrip local connection validation', () => {
+describe('LunarGrip connection validation', () => {
   it.each(['localhost', '127.0.0.1', '::1', 'LOCALHOST'])('accepts loopback host %s', (host) => {
     const result = validateLocalSqlServerConnection({
       connectionId: 'demo',
@@ -17,7 +17,7 @@ describe('LunarGrip local connection validation', () => {
     }
   })
 
-  it.each(['100.64.0.1', 'db.example.test', '192.168.1.20'])('rejects remote host %s', (host) => {
+  it.each(['100.64.0.1', 'db.example.test', '192.168.1.20'])('accepts remote host %s', (host) => {
     const result = validateLocalSqlServerConnection({
       connectionId: 'demo',
       host,
@@ -26,14 +26,33 @@ describe('LunarGrip local connection validation', () => {
       username: 'demo_user'
     })
 
-    expect(result).toEqual({
-      code: 'remote_host_rejected',
-      message: 'Only local SQL Server hosts are allowed in this phase.',
-      retryable: false
-    })
+    expect(isProviderError(result)).toBe(false)
+    if (!isProviderError(result)) {
+      expect(result.host).toBe(host.toLowerCase())
+    }
   })
 
-  it('rejects credentials and unknown fields before provider use', () => {
+  it('accepts credentials and TLS options', () => {
+    const result = validateLocalSqlServerConnection({
+      connectionId: 'demo',
+      host: 'db.example.test',
+      port: 1433,
+      database: 'DemoDb',
+      username: 'demo_user',
+      password: 'fixture-only',
+      encrypt: true,
+      trustServerCertificate: true
+    })
+
+    expect(isProviderError(result)).toBe(false)
+    if (!isProviderError(result)) {
+      expect(result.password).toBe('fixture-only')
+      expect(result.encrypt).toBe(true)
+      expect(result.trustServerCertificate).toBe(true)
+    }
+  })
+
+  it('rejects connection strings and unknown fields before provider use', () => {
     expect(
       validateLocalSqlServerConnection({
         connectionId: 'demo',
@@ -41,7 +60,7 @@ describe('LunarGrip local connection validation', () => {
         port: 1433,
         database: 'DemoDb',
         username: 'demo_user',
-        password: 'fixture-only'
+        connectionString: 'Server=localhost;User Id=sa'
       })
     ).toEqual({
       code: 'invalid_request',
@@ -50,7 +69,7 @@ describe('LunarGrip local connection validation', () => {
     })
   })
 
-  it('rejects invalid ports and empty identifiers', () => {
+  it('rejects invalid ports, empty identifiers, and oversized passwords', () => {
     expect(
       validateLocalSqlServerConnection({
         connectionId: '',
@@ -58,6 +77,21 @@ describe('LunarGrip local connection validation', () => {
         port: 0,
         database: 'DemoDb',
         username: 'demo_user'
+      })
+    ).toEqual({
+      code: 'invalid_request',
+      message: 'The connection contains invalid fields.',
+      retryable: false
+    })
+
+    expect(
+      validateLocalSqlServerConnection({
+        connectionId: 'demo',
+        host: 'localhost',
+        port: 1433,
+        database: 'DemoDb',
+        username: 'demo_user',
+        password: 'x'.repeat(257)
       })
     ).toEqual({
       code: 'invalid_request',

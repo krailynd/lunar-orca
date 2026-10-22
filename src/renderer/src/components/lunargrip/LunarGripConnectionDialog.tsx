@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AlertTriangle, Database, Plug, X } from 'lucide-react'
+import { Database, Loader2, Plug, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -20,21 +21,32 @@ import {
 } from '@/components/ui/select'
 import type { DatabaseConnection } from './lunargrip-types'
 
+export type LunarGripConnectionInput = DatabaseConnection & {
+  password?: string
+  encrypt?: boolean
+  trustServerCertificate?: boolean
+}
+
 export function LunarGripConnectionDialog({
   open,
   onOpenChange,
   onOpenDemo,
-  onTestConnection
+  onTestConnection,
+  testing = false
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenDemo: () => void
-  onTestConnection: (connection: DatabaseConnection) => void
+  onTestConnection: (connection: LunarGripConnectionInput) => void
+  testing?: boolean
 }): React.JSX.Element {
   const [host, setHost] = useState('localhost')
   const [port, setPort] = useState('1433')
-  const [database, setDatabase] = useState('')
-  const [username, setUsername] = useState('')
+  const [database, setDatabase] = useState('ProvocosDB')
+  const [username, setUsername] = useState('sa')
+  const [password, setPassword] = useState('Provocos2026!Seguro')
+  const [encrypt, setEncrypt] = useState(false)
+  const [trustServerCertificate, setTrustServerCertificate] = useState(true)
 
   const handleTest = (): void => {
     onTestConnection({
@@ -45,7 +57,10 @@ export function LunarGripConnectionDialog({
       port: Number(port),
       database,
       username,
-      isRemote: false
+      isRemote: false,
+      password,
+      encrypt,
+      trustServerCertificate
     })
   }
 
@@ -60,20 +75,13 @@ export function LunarGripConnectionDialog({
             </span>
           </DialogTitle>
           <DialogDescription>
-            Fase 1A valida el contrato y el host local, pero todavía no abre conexiones reales.
+            Conexión TDS directa a SQL Server. La contraseña no se persiste en disco.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-status-warning" />
-            <p>
-              Probar conexión quedará disponible cuando exista el driver SQL Server. No se guardan
-              contraseñas en esta fase.
-            </p>
-          </div>
           <div className="grid grid-cols-[1fr_120px] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="lunargrip-host">Host local</Label>
+              <Label htmlFor="lunargrip-host">Host</Label>
               <Input
                 id="lunargrip-host"
                 value={host}
@@ -128,9 +136,23 @@ export function LunarGripConnectionDialog({
                 id="lunargrip-password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="No se guarda"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
               />
             </div>
+          </div>
+          <div className="grid gap-2 rounded-md border border-border bg-muted/30 p-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={encrypt} onCheckedChange={(value) => setEncrypt(value === true)} />
+              Encriptación SSL
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={trustServerCertificate}
+                onCheckedChange={(value) => setTrustServerCertificate(value === true)}
+              />
+              Confiar en certificado (TrustServerCertificate)
+            </label>
           </div>
         </div>
         <DialogFooter>
@@ -142,7 +164,10 @@ export function LunarGripConnectionDialog({
             <Database />
             Abrir demo local
           </Button>
-          <Button onClick={handleTest}>Probar conexión</Button>
+          <Button onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="animate-spin" /> : null}
+            {testing ? 'Conectando…' : 'Probar conexión'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

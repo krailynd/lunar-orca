@@ -7,7 +7,7 @@ import type {
 } from '../../shared/agent-status-types'
 import type { AgentInterruptInferenceRequest } from '../../shared/agent-interrupt-intent'
 import type { AgentQuestionAnsweredInferenceRequest } from '../../shared/agent-question-answered-intent'
-import type { PreloadApi } from '../api-types'
+import type { PreloadApi, HerdrAgentPresence } from '../api-types'
 
 export const agentStatusApi = {
   /** Listen for agent status updates forwarded from native hook receivers. */
@@ -65,6 +65,9 @@ export const agentStatusApi = {
   },
   getMigrationUnsupportedSnapshot: (): Promise<MigrationUnsupportedPtyEntry[]> =>
     ipcRenderer.invoke('agentStatus:getMigrationUnsupportedSnapshot'),
+  /** Read-only Herdr agent presence polled by main; `herdr` agents live outside Orca PTYs. */
+  getHerdrAgents: (): Promise<HerdrAgentPresence[]> =>
+    ipcRenderer.invoke('agentStatus:getHerdrAgents'),
   /** Drop the cached hook status for a paneKey on both sides (memory + on-disk) so a relaunch can't resurrect a dismissed row. */
   drop: (paneKey: string): void => {
     ipcRenderer.send('agentStatus:drop', paneKey)

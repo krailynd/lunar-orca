@@ -78,10 +78,16 @@ function getDelegatedCliRefreshProvider(
   }
   // Why: only these providers require a user-run CLI to rotate the read-only
   // session Orca consumes; Claude handles the same failure kind in-app.
-  return p.provider === 'grok' || p.provider === 'kimi' ? p.provider : null
+  if (p.provider === 'kimi') {
+    return null
+  }
+  return p.provider === 'grok' ? p.provider : null
 }
 
 export function getProviderUsageStatusLabel(p: ProviderRateLimits): string {
+  if (p.provider === 'kimi') {
+    return ''
+  }
   const delegatedCliProvider = getDelegatedCliRefreshProvider(p)
   if (delegatedCliProvider === 'grok') {
     return translate('auto.components.status.bar.tooltip.e2c6a4f917', 'Run Grok to refresh')

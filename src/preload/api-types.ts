@@ -70,6 +70,28 @@ import type { LunarGripIpcApi } from '../shared/lunargrip-ipc-contract'
 // Flattens contracts that share one PreloadApi key: an intersection is not type-identical to the flat shape.
 type Merged<T> = { [K in keyof T]: T[K] }
 
+/**
+ * Herdr-managed agent presence surfaced read-only from the main-process poller.
+ * `herdr` runs agents outside Orca PTYs, so it cannot deliver hook events and
+ * is polled instead. Mirrors the payload of `agentStatus:getHerdrAgents`.
+ */
+export type HerdrAgentPresence = {
+  agent: string
+  status: 'working' | 'blocked' | 'waiting' | 'done' | 'idle' | 'unknown'
+  cwd: string
+  workspaceId: string | null
+  paneId: string | null
+  terminalTitle: string | null
+}
+
+/**
+ * Optional so hosts without the Herdr poller (web runtime, older main process)
+ * keep satisfying `PreloadApi`; present in the Electron preload bridge.
+ */
+export type AgentStatusBridgeApi = AgentStatusApi & {
+  getHerdrAgents?: () => Promise<HerdrAgentPresence[]>
+}
+
 export type PreloadApi = {
   app: AppApi
   orcaProfiles: OrcaProfileApi
@@ -158,7 +180,7 @@ export type PreloadApi = {
   pwsh: RuntimeApi['pwsh']
   gitBash: RuntimeApi['gitBash']
   plugins: PluginsApi
-  agentStatus: AgentStatusApi
+  agentStatus: Merged<AgentStatusBridgeApi>
   mobile: MobileApi
   speech: SpeechApi
   lunarGrip: LunarGripIpcApi

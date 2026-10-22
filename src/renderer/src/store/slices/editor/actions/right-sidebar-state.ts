@@ -89,7 +89,15 @@ export function createRightSidebarState(set: EditorSet, _get: EditorGet): RightS
       set((s) => ({
         rightSidebarTab: tab,
         rightSidebarRouteRequestId: s.rightSidebarRouteRequestId + 1,
-        ...(tab === 'explorer' ? { rightSidebarExplorerView: 'files' as const } : {})
+        ...(tab === 'explorer' ? { rightSidebarExplorerView: 'files' as const } : {}),
+        ...(s.activeWorktreeId
+          ? {
+              rightSidebarTabByWorktree: {
+                ...s.rightSidebarTabByWorktree,
+                [s.activeWorktreeId]: tab
+              }
+            }
+          : {})
       })),
     setRightSidebarExplorerView: (view) =>
       set((s) => ({

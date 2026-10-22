@@ -112,7 +112,7 @@ export function WorktreeCardSurface({ card }: { card: WorktreeCardController }):
 
       {newCardStyle && lineageChildren ? (
         <div
-          className="mt-1.5 space-y-1"
+          className="mt-1.5 space-y-1 relative pl-3.5 before:absolute before:left-1.5 before:top-0 before:bottom-2 before:w-px before:bg-sidebar-border/60 before:transition-all"
           data-worktree-lineage-children=""
           style={lineageChildrenStyle}
         >

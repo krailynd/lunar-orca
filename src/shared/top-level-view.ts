@@ -13,7 +13,9 @@ const TOP_LEVEL_VIEW_LOOKUP: Record<TopLevelView, true> = {
   artifacts: true,
   mobile: true,
   home: true,
-  lunargrip: true
+  lunargrip: true,
+  'agents-office': true,
+  orlack: true
 }
 
 export function isTopLevelView(value: unknown): value is TopLevelView {

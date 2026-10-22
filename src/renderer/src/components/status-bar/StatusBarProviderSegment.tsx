@@ -13,8 +13,7 @@ import {
   USAGE_URGENT_PERCENT,
   USAGE_WARNING_PERCENT,
   clampUsedPercent,
-  getProviderDisplayName,
-  getProviderUsageStatusLabel
+  getProviderDisplayName
 } from './tooltip'
 import { getTightestUsageSection, getUsageHeadlineSection } from './UsageRosterPanel'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
@@ -317,9 +316,8 @@ export function ProviderSegment({
   compact: boolean
   display: UsagePercentageDisplay
   mode?: StatusBarUsageMode
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const provider = p?.provider ?? 'claude'
-  const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
 
   // Idle / initial load
   if (!p || p.status === 'idle') {
@@ -343,22 +341,23 @@ export function ProviderSegment({
     )
   }
 
-  // Unavailable (CLI not installed)
+  // Unavailable (CLI not installed or no active quota)
   if (p.status === 'unavailable') {
-    return (
-      <span className="inline-flex items-center gap-1 text-muted-foreground/50">
-        <ProviderIcon provider={provider} /> --
-      </span>
-    )
+    return null
   }
 
-  // Error with no data
+  // Error with no data: don't flash alarming red/error text in the bar if it's missing credentials
   if (p.status === 'error' && !tightest) {
+    if (
+      p.usageMetadata?.failureKind === 'missing-credentials' ||
+      p.usageMetadata?.failureKind === 'no-subscription'
+    ) {
+      return null
+    }
     return (
-      <span className="inline-flex items-center gap-1 text-muted-foreground">
+      <span className="inline-flex items-center gap-1 text-muted-foreground/80 opacity-80">
         <ProviderIcon provider={provider} />
-        <AlertTriangle size={11} className="text-muted-foreground/80" />
-        {!compact && <span className="text-[11px] font-medium">{statusLabel}</span>}
+        <span className="text-[10px] text-muted-foreground/60">--</span>
       </span>
     )
   }

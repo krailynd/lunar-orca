@@ -26,6 +26,8 @@ const WorkspaceSpacePage = lazy(() => import('../components/workspace-space/Work
 const MobilePage = lazy(() => import('../components/mobile/MobilePage'))
 const HomePage = lazy(() => import('../components/home-page/HomePage'))
 const LunarGripPage = lazy(() => import('../components/lunargrip/LunarGripPage'))
+const AgentsOfficePage = lazy(() => import('../components/agents-office/AgentsOfficePage'))
+const OrlackPage = lazy(() => import('../components/orlack/OrlackPage'))
 const Terminal = lazy(() => import('../components/Terminal'))
 
 type WorktreeSidebarScrollRefs = {
@@ -80,6 +82,18 @@ function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element 
       {activeView === 'mobile' ? <MobilePage /> : null}
       {activeView === 'home' ? <HomePage /> : null}
       {activeView === 'lunargrip' ? <LunarGripPage /> : null}
+      {/* Why: Keep AgentsOffice mounted once visited so simulation, Three.js context and character states persist seamlessly */}
+      <div
+        className={
+          activeView === 'agents-office'
+            ? 'flex flex-1 min-w-0 min-h-0 w-full h-full'
+            : 'hidden flex-1 min-w-0 min-h-0'
+        }
+        aria-hidden={activeView !== 'agents-office'}
+      >
+        <AgentsOfficePage />
+      </div>
+      {activeView === 'orlack' ? <OrlackPage /> : null}
       {activeView === 'terminal' && creationLayoutActive && activePendingCreationId ? (
         <WorktreeCreationPanel
           creationId={activePendingCreationId}

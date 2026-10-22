@@ -1,3 +1,5 @@
+import type { LocalSqlServerConnection } from '../../../../shared/lunargrip-provider-types'
+
 export type DatabaseEngine = 'sqlserver' | 'postgres' | 'mysql' | 'sqlite'
 
 export type DatabaseConnection = {
@@ -92,4 +94,27 @@ export type DetachDatabaseOptions = {
   databaseName: string
   dropConnections?: boolean
   updateStatistics?: boolean
+}
+
+export type LunarGripConnectionPayload = LocalSqlServerConnection
+
+export type QueryResultError = {
+  code: string
+  message: string
+  retryable: boolean
+}
+
+export type QueryResult = {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  rowCount: number
+  elapsedMs: number
+  messages: string[]
+  error?: QueryResultError
+}
+
+export type QueryResultViewProps = {
+  result: QueryResult | null
+  running: boolean
+  demo: boolean
 }

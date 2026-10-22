@@ -96,7 +96,9 @@ export function createMainWindow(
   // forced per-frame WindowServer alpha compositing (#8482). Applies at creation only, so it needs a restart.
   const isLinux = process.platform === 'linux'
   const opaqueBackgroundColor = nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff'
-  const windowBackgroundColor = isLinux ? '#00000000' : opaqueBackgroundColor
+  // Why: a transparent Linux window lets the Wayland/Hyprland compositor blend the desktop wallpaper
+  // through the app, so the shell must stay fully opaque with a solid matte color.
+  const windowBackgroundColor = isLinux ? '#18191c' : opaqueBackgroundColor
 
   const platformBlurOptions =
     blur && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' as const } : {}
@@ -121,8 +123,8 @@ export function createMainWindow(
         : process.platform === 'win32'
           ? 'hidden'
           : undefined,
-    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own), and transparent:true enables Wayland/Hyprland alpha channel glass.
-    ...(process.platform === 'linux' ? { frame: false, transparent: true } : {}),
+    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own). transparent:false keeps the window opaque so Hyprland cannot blend the wallpaper through it.
+    ...(process.platform === 'linux' ? { frame: false, transparent: false } : {}),
     // Why: initial position for 1x zoom; syncTrafficLightPosition() adjusts on zoom change.
     ...(process.platform === 'darwin'
       ? {

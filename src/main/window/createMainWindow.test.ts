@@ -442,8 +442,8 @@ describe('createMainWindow', () => {
       const browserWindowOptions = browserWindowMock.mock.calls[0]?.[0]
       expect(browserWindowOptions.vibrancy).toBeUndefined()
       if (platform === 'linux') {
-        expect(browserWindowOptions.transparent).toBe(true)
-        expect(browserWindowOptions.backgroundColor).toBe('#00000000')
+        expect(browserWindowOptions.transparent).toBe(false)
+        expect(browserWindowOptions.backgroundColor).toBe('#18191c')
       } else {
         expect(browserWindowOptions.transparent).toBeUndefined()
         expect(browserWindowOptions.backgroundColor).toBe('#ffffff')

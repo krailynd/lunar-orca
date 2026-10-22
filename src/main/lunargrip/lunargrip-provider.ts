@@ -1,8 +1,10 @@
 import type {
   LocalSqlServerConnection,
   LunarGripConnectionResult,
+  LunarGripDatabaseList,
   LunarGripProvider,
   LunarGripProviderError,
+  LunarGripQueryResult,
   LunarGripSchemaSnapshot
 } from '../../shared/lunargrip-provider-types'
 
@@ -48,6 +50,31 @@ export class DemoLunarGripProvider implements LunarGripProvider {
       database: connection.database,
       generatedAt: Date.now(),
       tables: [],
+      error: { ...DEMO_PROVIDER_ERROR }
+    }
+  }
+
+  async listDatabases(
+    _connection: LocalSqlServerConnection,
+    signal: AbortSignal
+  ): Promise<LunarGripDatabaseList> {
+    throwIfAborted(signal)
+    return { databases: [] }
+  }
+
+  async executeSql(
+    _connection: LocalSqlServerConnection,
+    _sql: string,
+    _database: string,
+    signal: AbortSignal
+  ): Promise<LunarGripQueryResult> {
+    throwIfAborted(signal)
+    return {
+      columns: [],
+      rows: [],
+      rowCount: 0,
+      elapsedMs: 0,
+      messages: [],
       error: { ...DEMO_PROVIDER_ERROR }
     }
   }

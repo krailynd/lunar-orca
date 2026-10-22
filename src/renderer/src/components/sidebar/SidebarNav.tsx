@@ -1,11 +1,13 @@
 import React from 'react'
 import {
   BookOpen,
+  Building2,
   CalendarClock,
   Database,
   EyeOff,
   Files,
   Home,
+  MessageSquare,
   Search,
   Smartphone
 } from 'lucide-react'
@@ -68,6 +70,8 @@ const SidebarNav = React.memo(function SidebarNav() {
   const openSkillsPage = useAppStore((s) => s.openSkillsPage)
   const openHomePage = useAppStore((s) => s.openHomePage)
   const openLunarGripPage = useAppStore((s) => s.openLunarGripPage)
+  const openAgentsOfficePage = useAppStore((s) => s.openAgentsOfficePage)
+  const openOrlackPage = useAppStore((s) => s.openOrlackPage)
   const openModal = useAppStore((s) => s.openModal)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const activeView = useAppStore((s) => s.activeView)
@@ -78,6 +82,8 @@ const SidebarNav = React.memo(function SidebarNav() {
   const showSkillsButton = useAppStore((s) => shouldShowSkillsButton(s.settings))
   const homeActive = activeView === 'home'
   const lunarGripActive = activeView === 'lunargrip'
+  const officeActive = activeView === 'agents-office'
+  const orlackActive = activeView === 'orlack'
   const automationsActive = activeView === 'automations'
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
@@ -171,6 +177,46 @@ const SidebarNav = React.memo(function SidebarNav() {
           strokeWidth={lunarGripActive ? 2.25 : 1.75}
         />
         <span className="flex-1 font-medium">LunarGrip</span>
+      </button>
+      <button
+        type="button"
+        onClick={openAgentsOfficePage}
+        aria-current={officeActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          officeActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
+            : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
+        )}
+      >
+        <Building2
+          className={cn(
+            'size-4 shrink-0',
+            officeActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+          )}
+          strokeWidth={officeActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1 font-medium">Agents Office</span>
+      </button>
+      <button
+        type="button"
+        onClick={openOrlackPage}
+        aria-current={orlackActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          orlackActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
+            : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
+        )}
+      >
+        <MessageSquare
+          className={cn(
+            'size-4 shrink-0',
+            orlackActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+          )}
+          strokeWidth={orlackActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1 font-medium">Orlack</span>
       </button>
       {showArtifactsButton ? (
         <ContextMenu>

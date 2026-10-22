@@ -7,7 +7,7 @@ import {
   activateAndRevealFolderWorkspace
 } from '@/lib/worktree-activation'
 import { HARNESS_CATEGORIES, formatRelativeTime } from './home-page-types'
-import { HomePageHeader } from './HomePageHeader'
+import { HomePageHeader, type HomeAgentUsage, type RecentProject } from './HomePageHeader'
 import { HomePageGitActivitySection, type GitRecentChange } from './HomePageGitActivitySection'
 import { HomePageSessionsSection } from './HomePageSessionsSection'
 import { HomePageLocalTasksSection, formatLocalTaskColumnLabel } from './HomePageLocalTasksSection'
@@ -26,6 +26,17 @@ import {
 } from '@/components/task-page/task-kanban-defs'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 
+const AGENT_DISPLAY_NAMES: Record<string, string> = {
+  pi: 'Pi',
+  omp: 'Pi',
+  'prime-agent': 'Pi',
+  claude: 'Claude',
+  codex: 'Codex',
+  opencode: 'OpenCode',
+  agy: 'Agy',
+  hermes: 'Hermes'
+}
+
 export default function HomePage(): React.JSX.Element {
   const repos = useAppStore((s) => s.repos)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
@@ -39,6 +50,7 @@ export default function HomePage(): React.JSX.Element {
   const [activeCategory, setActiveCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [gitRecentChanges, setGitRecentChanges] = useState<GitRecentChange[]>([])
+  const [renderNow] = useState(() => Date.now())
 
   const loadSessions = useCallback(async () => {
     try {
@@ -201,6 +213,58 @@ export default function HomePage(): React.JSX.Element {
     [openModal, repos]
   )
 
+  const recentProjects = useMemo<RecentProject[]>(() => {
+    const entries: { project: RecentProject; lastActivityAt: number }[] = []
+    for (const [repoId, wtList] of Object.entries(worktreesByRepo)) {
+      const repo = repos.find((item) => item.id === repoId)
+      for (const worktree of wtList) {
+        entries.push({
+          lastActivityAt: worktree.lastActivityAt ?? 0,
+          project: {
+            id: worktree.id,
+            name: worktree.displayName || repo?.displayName || 'workspace',
+            path: worktree.path,
+            terminalCount: 0,
+            worktreeCount: wtList.length,
+            lastActiveLabel: formatRelativeTime(
+              worktree.lastActivityAt ? new Date(worktree.lastActivityAt).toISOString() : null
+            )
+          }
+        })
+      }
+    }
+    return entries
+      .sort((a, b) => b.lastActivityAt - a.lastActivityAt)
+      .slice(0, 4)
+      .map((entry) => entry.project)
+  }, [worktreesByRepo, repos])
+
+  const agentUsage = useMemo<HomeAgentUsage[]>(() => {
+    const stats = new Map<string, { tokens: number; latest: number; model: string }>()
+    for (const session of sessions) {
+      const key = (session.agent || 'pi').toLowerCase()
+      const previous = stats.get(key) ?? { tokens: 0, latest: 0, model: '' }
+      const updated = session.updatedAt ? new Date(session.updatedAt).getTime() : 0
+      stats.set(key, {
+        tokens: previous.tokens + (session.totalTokens ?? session.messageCount ?? 0),
+        latest: Math.max(previous.latest, Number.isNaN(updated) ? 0 : updated),
+        model: session.model || previous.model
+      })
+    }
+    const totalTokens = [...stats.values()].reduce((sum, item) => sum + item.tokens, 0) || 1
+    const liveThreshold = renderNow - 15 * 60 * 1000
+    return [...stats.entries()]
+      .map(([id, item]) => ({
+        id,
+        name: AGENT_DISPLAY_NAMES[id] ?? id.toUpperCase(),
+        model: item.model || 'sin modelo',
+        percent: Math.round((item.tokens / totalTokens) * 100),
+        status: item.latest >= liveThreshold ? ('live' as const) : ('idle' as const)
+      }))
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 3)
+  }, [sessions, renderNow])
+
   return (
     <div className="flex-1 h-full min-h-0 overflow-y-auto scrollbar-sleek bg-background/95 text-foreground select-none">
       <div className="relative min-h-full max-w-7xl mx-auto px-6 py-8 flex flex-col gap-8">
@@ -214,6 +278,23 @@ export default function HomePage(): React.JSX.Element {
           reposCount={repos.length}
           worktreesCount={totalWorktrees}
           sessionsCount={sessions.length}
+          recentProjects={recentProjects}
+          agentUsage={agentUsage}
+          onOpenProject={(project) => {
+            activateAndRevealWorktree(project.id)
+          }}
+          onQuickAction={(action) => {
+            if (action === 'new-workspace') {
+              openModal('new-workspace-composer', { telemetrySource: 'home-quick-action' })
+              return
+            }
+            openModal('new-workspace-composer', {
+              telemetrySource: `home-quick-action-${action}`
+            })
+          }}
+          onSubmitPrompt={() => {
+            openModal('new-workspace-composer', { telemetrySource: 'home-terminal-prompt' })
+          }}
           onNewWorkspace={() => {
             openModal('new-workspace-composer', { telemetrySource: 'home-header' })
           }}

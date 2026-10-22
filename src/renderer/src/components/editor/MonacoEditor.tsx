@@ -1,6 +1,6 @@
 /* oxlint-disable react-doctor/no-adjust-state-on-prop-change -- Why: selection annotations are synchronized from Monaco editor selection and layout APIs, not derived React props. */
 import React, { useRef, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import Editor from '@monaco-editor/react'
+import Editor, { type Monaco } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { MarkdownDocument } from '../../../../shared/filesystem-entry-types'
 import { useAppStore } from '@/store'
@@ -8,6 +8,11 @@ import '@/lib/monaco-setup'
 import { computeEditorFontSize, resolveEditorFontFamily } from '@/lib/editor-font-zoom'
 
 import { useContextualCopySetup } from './useContextualCopySetup'
+import {
+  attachVimModeToMonaco,
+  type VimAdapter,
+  type VimModeStatus
+} from '@/lib/monaco-vim-adapter'
 import { MonacoGutterContextMenu } from './MonacoGutterContextMenu'
 import { isLinuxUserAgent } from '../terminal-pane/pane-helpers'
 import { MAX_TOKENIZATION_LINE_LENGTH } from '@/lib/monaco-languages/monarch-embed-entry-budget'
@@ -18,6 +23,54 @@ import { getMonacoAutoHeightForContent, isMonacoAutoHeightCapped } from './monac
 import { monacoFindOptions } from './monaco-find-options'
 import { useMonacoRevealScheduler } from './use-monaco-reveal-scheduler'
 import type { MonacoContentSyncMode } from './monaco-content-sync'
+
+const ZED_DEEP_CARBON_THEME_NAME = 'orca-zed-deep-carbon'
+let zedDeepCarbonThemeRegistered = false
+
+// Why: one registration per renderer; @monaco-editor/react calls this on every mount.
+function registerZedDeepCarbonTheme(monaco: Monaco): void {
+  if (zedDeepCarbonThemeRegistered) {
+    return
+  }
+  zedDeepCarbonThemeRegistered = true
+  monaco.editor.defineTheme(ZED_DEEP_CARBON_THEME_NAME, {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6b7280', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'fb4934' },
+      { token: 'string', foreground: 'b8bb26' },
+      { token: 'number', foreground: 'd3869b' },
+      { token: 'type', foreground: 'fabd2f' },
+      { token: 'type.identifier', foreground: 'fabd2f' },
+      { token: 'function', foreground: '8ec07c' },
+      { token: 'variable', foreground: 'd5d8da' }
+    ],
+    colors: {
+      'editor.background': '#18191c',
+      'editor.foreground': '#d5d8da',
+      'editorLineNumber.foreground': '#504945',
+      'editorLineNumber.activeForeground': '#b8bb26',
+      'editorCursor.foreground': '#b8bb26',
+      'editor.selectionBackground': '#3c4043',
+      'editor.inactiveSelectionBackground': '#2a2d30',
+      'editor.lineHighlightBackground': '#1c1f20eb',
+      'editor.lineHighlightBorder': '#282c2de0',
+      'editorGutter.background': '#18191c',
+      'editorIndentGuide.background1': '#282c2d',
+      'editorIndentGuide.activeBackground1': '#504945',
+      'editorWidget.background': '#1c1f20',
+      'editorWidget.border': '#282c2d',
+      'editorSuggestWidget.background': '#1c1f20',
+      'editorHoverWidget.background': '#1c1f20',
+      'editorBracketMatch.background': '#3c404366',
+      'editorBracketMatch.border': '#b8bb26',
+      'scrollbarSlider.background': '#50494533',
+      'scrollbarSlider.hoverBackground': '#50494566',
+      'scrollbarSlider.activeBackground': '#50494599'
+    }
+  })
+}
 import { useMonacoContentSyncBridge } from './use-monaco-content-sync-bridge'
 import { useMonacoMarkdownAnnotations } from './use-monaco-markdown-annotations'
 import { useMonacoEditorDecorations } from './use-monaco-editor-decorations'
@@ -217,7 +270,26 @@ export default function MonacoEditor({
     gutterMenu: { setGutterMenuOpen, setGutterMenuPoint, setGutterMenuLine }
   })
 
-  // Navigate to line and highlight match when requested (for already-mounted editor)
+  const [vimStatus, setVimStatus] = useState<VimModeStatus | null>(null)
+  const vimAdapterRef = useRef<VimAdapter | null>(null)
+
+  // Attach / Detach Vim Mode
+  useEffect(() => {
+    if (!mountedEditor) {
+      return
+    }
+
+    vimAdapterRef.current?.dispose()
+    vimAdapterRef.current = attachVimModeToMonaco(mountedEditor, (status) => {
+      setVimStatus(status)
+    })
+
+    return () => {
+      vimAdapterRef.current?.dispose()
+      vimAdapterRef.current = null
+    }
+  }, [mountedEditor])
+
   useEffect(() => {
     if (!revealLine || !editorRef.current) {
       return
@@ -248,7 +320,8 @@ export default function MonacoEditor({
         language={language}
         // Why: defaultValue, not controlled value — Orca owns post-mount content sync; a controlled path would double setValue.
         defaultValue={content}
-        theme={isDark ? 'vs-dark' : 'vs'}
+        theme={isDark ? ZED_DEEP_CARBON_THEME_NAME : 'vs'}
+        beforeMount={registerZedDeepCarbonTheme}
         onChange={contentSync.handleChange}
         onMount={handleMount}
         options={{
@@ -276,11 +349,33 @@ export default function MonacoEditor({
               }
             : undefined,
           smoothScrolling: true,
-          cursorSmoothCaretAnimation: 'off',
+          // Why: Zed/Neovide-style caret — smooth glide plus a soft blink.
+          cursorSmoothCaretAnimation: 'on',
+          cursorBlinking: 'smooth',
           padding: { top: 0 },
           find: monacoFindOptions,
           // Why: Monaco owns its rendered line surface, so align its selection-clipboard with the app opt-out (the global DOM hook can't).
-          selectionClipboard: settings?.primarySelectionMiddleClickPaste ?? isLinuxUserAgent()
+          selectionClipboard: settings?.primarySelectionMiddleClickPaste ?? isLinuxUserAgent(),
+          // Intelligent Code Suggestions & Auto-Complete (Blink.cmp / Zed style)
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: true
+          },
+          suggestOnTriggerCharacters: true,
+          acceptSuggestionOnEnter: 'smart',
+          tabCompletion: 'on',
+          wordBasedSuggestions: 'allDocuments',
+          suggest: {
+            showKeywords: true,
+            showSnippets: true,
+            showWords: true,
+            preview: true,
+            showClasses: true,
+            showFunctions: true,
+            showVariables: true,
+            showConstants: true
+          }
         }}
         // Why the helper: `@monaco-editor/react` calls `Uri.parse` on this, which mis-reads a Windows drive path as its own scheme.
         path={modelUri}
@@ -288,6 +383,26 @@ export default function MonacoEditor({
         saveViewState={false}
         keepCurrentModel
       />
+
+      {/* Neovim / Vim Mode Floating Status Indicator */}
+      {vimStatus && (
+        <div className="absolute bottom-2 right-4 z-20 flex items-center gap-2 rounded-md border border-[#282c2de0] bg-[#1c1f20eb] px-2.5 py-1 text-[11px] font-mono shadow-md backdrop-blur-sm select-none pointer-events-none">
+          <span
+            className={`font-bold tracking-wider ${
+              vimStatus.mode === 'INSERT'
+                ? 'text-[#fabd2f]'
+                : vimStatus.mode.startsWith('VISUAL')
+                  ? 'text-[#d3869b]'
+                  : 'text-[#b8bb26]'
+            }`}
+          >
+            -- {vimStatus.mode} --
+          </span>
+          {vimStatus.subMode && vimStatus.subMode !== `-- ${vimStatus.mode} --` && (
+            <span className="text-muted-foreground text-[10px]">{vimStatus.subMode}</span>
+          )}
+        </div>
+      )}
 
       {toastNode}
       <MonacoGutterContextMenu

@@ -248,16 +248,10 @@ export const electronViteConfig: UserConfig = {
           'wsl-transcript-fs-process-entry': resolve(
             'src/main/native-chat/wsl-transcript-fs-process-entry.ts'
           ),
-          // Why: libuv spawns processes inline on the calling loop, so the port
-          // scan's probe commands run on a worker thread instead of the UI one.
           'port-scan-command-worker-entry': resolve(
             'src/main/ports/port-scan-command-worker-entry.ts'
           ),
-          // Why: the Claude/Codex/OpenCode usage scans walk whole history
-          // corpora and read SQLite synchronously; a worker thread keeps that
-          // off the main-process event loop.
           'usage-scan-worker-entry': resolve('src/main/usage/usage-scan-worker-entry.ts'),
-          // Why: a first account setup can merge a large history tree with sync fs calls.
           'claude-profile-setup-worker-entry': resolve(
             'src/main/claude-accounts/claude-profile-setup-worker-entry.ts'
           ),
@@ -267,15 +261,10 @@ export const electronViteConfig: UserConfig = {
           'profile-state-writer-worker-entry': resolve(
             'src/main/persistence/profile-state/profile-state-writer-worker-entry.ts'
           ),
-          // Why: forked with ELECTRON_RUN_AS_NODE so @parcel/watcher faults
-          // can't take down the main process (issue #7547).
           'parcel-watcher-process-entry': resolve('src/main/ipc/parcel-watcher-process-entry.ts'),
-          // Why: `orca serve` runs it under ELECTRON_RUN_AS_NODE so the CLI never bundles orcad prep.
           [ORCAD_LOCAL_SERVE_SELECTION_ENTRY]: resolve(
             'src/main/orcad/orcad-local-serve-selection-entry.ts'
           ),
-          // Why: a worker thread survives the macOS 26 AppKit main-thread deadlock
-          // without paying for another Electron process.
           'main-thread-hang-watchdog-entry': resolve(
             'src/main/hang-watchdog/main-thread-hang-watchdog-entry.ts'
           ),
@@ -321,13 +310,28 @@ export const electronViteConfig: UserConfig = {
   },
   renderer: {
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         ...markdownParserAliases,
+        react: resolve('node_modules/.pnpm/react@19.2.8/node_modules/react'),
+        'react-dom': resolve(
+          'node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom'
+        ),
+        'monaco-vim': resolve('node_modules/monaco-vim/dist/monaco-vim.umd.js'),
+        'monaco-editor/esm/vs/editor/editor.api': resolve(
+          'node_modules/monaco-editor/esm/vs/editor/editor.api.js'
+        ),
+        'monaco-editor/esm/vs/editor/common/commands/shiftCommand': resolve(
+          'node_modules/monaco-editor/esm/vs/editor/common/commands/shiftCommand.js'
+        ),
         '@renderer': resolve('src/renderer/src'),
         '@': resolve('src/renderer/src')
       }
     },
     plugins: [react(), tailwindcss(), createPdfjsViewerAssetsPlugin()],
+    optimizeDeps: {
+      include: ['react', 'react-dom', '@monaco-editor/react', 'zustand']
+    },
     worker: {
       format: 'es'
     },

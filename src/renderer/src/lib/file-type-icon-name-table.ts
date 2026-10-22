@@ -9,6 +9,7 @@ import {
   FileText,
   type LucideIcon
 } from 'lucide-react'
+import type { MaterialFileIconSpec } from './file-type-icon-extension-table'
 
 export const FILE_ICON_BY_NAME: Record<string, LucideIcon> = {
   '.babelrc': FileSliders,
@@ -84,4 +85,29 @@ export const FILE_ICON_BY_NAME: Record<string, LucideIcon> = {
   'vitest.config.mjs': FileSliders,
   'vitest.config.ts': FileSliders,
   'yarn.lock': FileBox
+}
+
+// Why: filename overrides for the Material-style renderer, where an extension alone
+// is not specific enough (lockfiles, Dockerfile, package.json, etc.).
+export const MATERIAL_ICON_BY_NAME: Record<string, MaterialFileIconSpec> = {
+  '.gitignore': { color: '#f14e32', label: 'GIT' },
+  '.gitattributes': { color: '#f14e32', label: 'GIT' },
+  '.dockerignore': { color: '#2496ed', label: 'DKR' },
+  dockerfile: { color: '#2496ed', label: 'DKR' },
+  '.editorconfig': { color: '#90a4ae', label: 'ED', textColor: '#1f2328' },
+  '.env': { color: '#faf44b', label: 'ENV', textColor: '#1f2328' },
+  '.npmrc': { color: '#cb3837', label: 'NPM' },
+  'package.json': { color: '#cb3837', label: 'NPM' },
+  'pnpm-lock.yaml': { color: '#cb3837', label: 'PNPM' },
+  'yarn.lock': { color: '#cb3837', label: 'YARN' },
+  'package-lock.json': { color: '#cb3837', label: 'NPM' },
+  'cargo.toml': { color: '#dea584', label: 'RS', textColor: '#1f2328' },
+  'cargo.lock': { color: '#dea584', label: 'RS', textColor: '#1f2328' },
+  'go.mod': { color: '#00add8', label: 'GO' },
+  'go.sum': { color: '#00add8', label: 'GO' },
+  'requirements.txt': { color: '#3776ab', label: 'PY' },
+  makefile: { color: '#6d8086', label: 'MK' },
+  readme: { color: '#083fa1', label: 'MD' },
+  'tsconfig.json': { color: '#3178c6', label: 'TS' },
+  license: { color: '#d4af37', label: 'LIC', textColor: '#1f2328' }
 }

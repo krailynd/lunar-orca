@@ -19,6 +19,9 @@ export type LocalSqlServerConnection = {
   port: number
   database: string
   username: string
+  password?: string
+  encrypt?: boolean
+  trustServerCertificate?: boolean
 }
 
 export type LunarGripProviderError = {
@@ -55,6 +58,19 @@ export type LunarGripSchemaSnapshot = {
   error?: LunarGripProviderError
 }
 
+export type LunarGripDatabaseList = {
+  databases: string[]
+}
+
+export type LunarGripQueryResult = {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  rowCount: number
+  elapsedMs: number
+  messages: string[]
+  error?: LunarGripProviderError
+}
+
 export type LunarGripProvider = {
   testConnection(
     connection: LocalSqlServerConnection,
@@ -64,4 +80,14 @@ export type LunarGripProvider = {
     connection: LocalSqlServerConnection,
     signal: AbortSignal
   ): Promise<LunarGripSchemaSnapshot>
+  listDatabases(
+    connection: LocalSqlServerConnection,
+    signal: AbortSignal
+  ): Promise<LunarGripDatabaseList>
+  executeSql(
+    connection: LocalSqlServerConnection,
+    sql: string,
+    database: string,
+    signal: AbortSignal
+  ): Promise<LunarGripQueryResult>
 }

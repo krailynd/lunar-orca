@@ -2,7 +2,6 @@ export type TerminalWebglAutoDecision = {
   allowWebgl: boolean
   reason:
     | 'non-linux'
-    | 'linux-wayland'
     | 'linux-hardware-renderer'
     | 'linux-webgl2-unavailable'
     | 'linux-renderer-unavailable'
@@ -28,14 +27,6 @@ export function isLinuxRendererHost(
     return false
   }
   return platform.includes('Linux') || userAgent.includes('Linux')
-}
-
-function readRendererDisplayServer(): 'wayland' | 'x11' | null {
-  try {
-    return window.api.platform.get().displayServer
-  } catch {
-    return null
-  }
 }
 
 function readWebglRendererInfo(): Pick<TerminalWebglAutoDecision, 'renderer' | 'vendor'> & {
@@ -80,18 +71,6 @@ export function getTerminalWebglAutoDecision(): TerminalWebglAutoDecision {
     cachedDecision = {
       allowWebgl: true,
       reason: 'non-linux',
-      renderer: null,
-      vendor: null
-    }
-    return cachedDecision
-  }
-
-  if (readRendererDisplayServer() === 'wayland') {
-    // Why: #5319 can wedge terminal input during xterm WebGL context creation
-    // on Linux Wayland before xterm reports a recoverable context-loss event.
-    cachedDecision = {
-      allowWebgl: false,
-      reason: 'linux-wayland',
       renderer: null,
       vendor: null
     }

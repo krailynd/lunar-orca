@@ -93,6 +93,7 @@ export type RightSidebarTab =
   | 'explorer'
   | 'search'
   | 'vault'
+  | 'todos'
   | 'workspaces'
   | 'pr-checks'
   | 'source-control'
@@ -126,3 +127,5 @@ export type TopLevelView =
   | 'mobile'
   | 'home'
   | 'lunargrip'
+  | 'agents-office'
+  | 'orlack'

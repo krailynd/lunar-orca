@@ -200,14 +200,14 @@ export function resolveQuickCreateLinkedWorkItemPrompt(
     : null
   const linearDraft = linearBlock ? formatDraftContextBlock(linearBlock) : null
   const linkedUrl = linkedWorkItem?.url?.trim() || null
+  // Why: a note with no link is still the user's whole prompt; dropping it launched empty agents.
   const draftPrompt = linearDraft
     ? [trimmedNote, linearDraft].filter(Boolean).join('\n\n')
     : linkedUrl
       ? [trimmedNote, linkedUrl].filter(Boolean).join('\n\n')
-      : null
-  const isLinearTypedOnly = linkedWorkItem?.number === 0 && Boolean(trimmedNote) && !draftPrompt
+      : trimmedNote || null
   return {
-    prompt: isLinearTypedOnly ? trimmedNote : '',
+    prompt: '',
     draftPrompt
   }
 }

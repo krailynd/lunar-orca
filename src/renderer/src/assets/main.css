@@ -3418,42 +3418,38 @@ html.native-shell .app-layout {
 
 html.native-shell:not(.dark),
 html.native-shell:not(.dark) body {
-  background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 45%, #f0fdf4 100%) !important;
+  background: #f1f2f5 !important;
 }
 
 html.native-shell.dark,
 html.native-shell.dark body {
-  background: #0d1412 !important;
+  background: #18191c !important;
 }
 
 :root:not(.dark) .bg-worktree-sidebar,
 :root:not(.dark) .bg-sidebar {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
 
 .dark .bg-worktree-sidebar,
 .dark .bg-sidebar {
-  background: rgba(16, 24, 22, 0.92) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: #1f2024 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 :root:not(.dark) [data-worktree-sticky-header-active] {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .dark [data-worktree-sticky-header-active] {
-  background: rgba(16, 24, 22, 0.94) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #18191c !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 [data-contextual-tour-target='sidebar-navigation'] button {
@@ -3493,11 +3489,11 @@ html.native-shell.dark body {
   box-shadow:
     0 8px 20px -4px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  color: #10b981 !important;
+  color: var(--foreground) !important;
 }
 
 .dark .titlebar-app-name-main {
-  color: #10b981;
+  color: var(--foreground);
 }
 
 .dark [data-worktree-card-selected='true'],
@@ -3525,7 +3521,7 @@ html.native-shell.dark body {
 
 .dark [data-worktree-card-surface][data-worktree-card-active='primary'] {
   border-radius: 14px;
-  border-color: rgba(16, 185, 129, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   background: rgba(255, 255, 255, 0.06) !important;
   box-shadow:
     0 8px 22px -4px rgba(0, 0, 0, 0.36),
@@ -3535,12 +3531,12 @@ html.native-shell.dark body {
 .dark [data-worktree-card-surface][data-worktree-card-active='primary'] [data-worktree-name],
 .dark [data-worktree-card-surface][data-worktree-card-active='primary'] .font-semibold,
 .dark [data-worktree-card-surface][data-worktree-card-active='primary'] .text-foreground {
-  color: #10b981 !important;
+  color: var(--foreground) !important;
 }
 
 .dark [role='tab'][aria-selected='true'] {
-  color: #10b981 !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--foreground) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
 /* Interactive search buttons and inputs: full pill style */
@@ -3572,7 +3568,7 @@ html.native-shell.dark body {
 .dark .terminal-pane-title-input:focus,
 .dark input[type='search']:focus,
 .dark [data-search-input]:focus {
-  border-color: rgba(16, 185, 129, 0.45) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -3597,23 +3593,17 @@ html.native-shell.dark body {
 
 /* ── LunarGrip visual polish ────────────────────────────────────────────────
    LunarGrip is a read-only data workbench that sits on the app shell. These
-   helpers keep its surfaces calm and layered: a soft jade/celeste ambient
-   wash, a faint canvas grid, an elegant translucent empty-state card, and the
-   spring-like easing the rest of the app already uses for interactions.
+   helpers keep its surfaces calm and layered: a solid matte ambient base,
+   a faint canvas grid, a flat empty-state card, and the spring-like easing
+   the rest of the app already uses for interactions.
    Every value derives from existing tokens via color-mix, so the theme owns
    the palette; nothing here introduces a raw color. */
 .lunargrip-ambient {
-  background-image:
-    radial-gradient(
-      120% 90% at 8% -10%,
-      color-mix(in srgb, var(--primary) 9%, transparent),
-      transparent 46%
-    ),
-    radial-gradient(
-      90% 80% at 100% 0%,
-      color-mix(in srgb, var(--callout-important) 6%, transparent),
-      transparent 42%
-    );
+  background-color: var(--background);
+}
+
+.dark .lunargrip-ambient {
+  background-color: #18191c;
 }
 
 .lunargrip-rail {
@@ -3633,11 +3623,14 @@ html.native-shell.dark body {
 }
 
 .lunargrip-empty-card {
-  background: color-mix(in srgb, var(--card) 74%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-  box-shadow: 0 20px 45px -28px color-mix(in srgb, var(--primary) 45%, transparent);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 45px -28px rgba(0, 0, 0, 0.35);
+}
+
+.dark .lunargrip-empty-card {
+  background: #222327;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .lunargrip-spring {
@@ -3658,4 +3651,756 @@ html.native-shell.dark body {
 
 .lunargrip-lift:active {
   transform: translateY(0);
+}
+
+/* ── Lunar matte surfaces ──────────────────────────────────────────────
+   Charcoal/slate redesign for the Omarchy-native shell. Neutralizes the
+   greenish dark palette and restyles the home, tab strip, markdown
+   surface, status bar, and sidebar agent rows as layered matte surfaces.
+   Scoped so the light theme keeps its own identity. */
+.dark {
+  --background: #18191c;
+  --editor-surface: #18191c;
+  --foreground: #e4e7ec;
+  --card: #1f2024;
+  --card-foreground: #e4e7ec;
+  --popover: #222327;
+  --popover-foreground: #e4e7ec;
+  --primary: #94a3b8;
+  --primary-foreground: #101114;
+  --secondary: #26272b;
+  --secondary-foreground: #e4e7ec;
+  --muted: #222327;
+  --muted-foreground: #94a3b8;
+  --accent: rgba(255, 255, 255, 0.07);
+  --accent-foreground: #f1f5f9;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --worktree-sidebar: #1f2024;
+  --worktree-sidebar-foreground: #e4e7ec;
+  --worktree-sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar: #1f2024;
+  --sidebar-foreground: #e4e7ec;
+  --sidebar-primary: #94a3b8;
+  --sidebar-primary-foreground: #101114;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --workspace-status-review: #60a5fa;
+  --chart-3: #60a5fa;
+}
+
+/* Tab strip → rounded pills, no hard edges. The drop-indicator helpers stay
+   untouched (their unit tests pin the class strings) — the pill look is
+   layered on the rendered [data-tab-id] rows. */
+[data-tab-id] {
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  margin: 3px 3px !important;
+  height: calc(100% - 6px) !important;
+  transition:
+    background-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-tab-id][data-active='true'] {
+  background: #26272b !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-tab-id][data-active='false'] {
+  background: transparent !important;
+  color: #94a3b8 !important;
+}
+
+[data-tab-id][data-active='false']:hover {
+  background: #1f2024 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Retire the hard bottom selection bar; the pill fill marks the active tab. */
+[data-tab-id] > span.absolute.bottom-0 {
+  background-color: transparent !important;
+}
+
+:root:not(.dark) [data-tab-id][data-active='true'] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root:not(.dark) [data-tab-id][data-active='false'] {
+  color: #64748b !important;
+}
+
+:root:not(.dark) [data-tab-id][data-active='false']:hover {
+  background: #f1f2f5 !important;
+  color: #0f172a !important;
+}
+
+/* Rich markdown → solid matte charcoal, no green wash. */
+.dark .rich-markdown-editor-shell,
+.dark .rich-markdown-editor-layout {
+  background: #18191c;
+}
+
+.dark .rich-markdown-editor-toolbar {
+  background: #1f2024;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Comfortable reading rhythm and crisp headings on the matte surface. */
+.dark .rich-markdown-editor {
+  color: #dbe1e8;
+  line-height: 1.72;
+}
+
+.dark .rich-markdown-editor h1,
+.dark .rich-markdown-editor h2,
+.dark .rich-markdown-editor h3,
+.dark .rich-markdown-editor h4 {
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+
+.dark .rich-markdown-editor p {
+  margin: 0.65em 0;
+}
+
+.dark .rich-markdown-editor code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.worktree-agent-list {
+  padding-left: 2px;
+}
+
+/* Status bar → clean charcoal with a faint top rule. */
+.status-bar-root {
+  background: #141517 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+:root:not(.dark) .status-bar-root {
+  background: #f7f8fa !important;
+  border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Sidebar agent rows → soft pills with a working-state glow. */
+.agent-disclosure-row {
+  border-radius: 10px !important;
+}
+
+.worktree-agent-row-hover:hover,
+.dark .worktree-agent-row-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Home (Alethe-style) ─────────────────────────────────────────────── */
+.home-hero-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 220px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: radial-gradient(circle at 50% 30%, #1c1d22 0%, #141518 100%);
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Why the mask: fades the artwork into the panel instead of ending on a hard edge. */
+.home-hero-banner-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  opacity: 0.88;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: heroBannerPulse 10s ease-in-out infinite alternate;
+  -webkit-mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, #000 60%, transparent 100%);
+  mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, #000 60%, transparent 100%);
+}
+
+@keyframes heroBannerPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.78;
+  }
+  100% {
+    transform: scale(1.035);
+    opacity: 0.95;
+  }
+}
+
+@media (min-width: 768px) {
+  .home-hero-banner {
+    min-height: 240px;
+  }
+}
+
+.home-hero {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 24px 26px;
+  background: linear-gradient(
+    to right,
+    rgba(20, 21, 24, 0.82) 0%,
+    rgba(20, 21, 24, 0.45) 50%,
+    rgba(20, 21, 24, 0.1) 100%
+  );
+  backdrop-filter: blur(4px);
+}
+
+.home-hero-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 9px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.6);
+}
+
+.home-hero-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  color: #7b8494;
+}
+
+.home-hero-greeting {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #f1f5f9;
+}
+
+.home-hero-name {
+  color: #e2e8f0;
+}
+
+.home-hero-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #7b8494;
+}
+
+.home-terminal-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -40px rgba(0, 0, 0, 0.75);
+}
+
+.home-terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #232428;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.home-mac-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 9999px;
+}
+
+.home-terminal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: #94a3b8;
+}
+
+.home-terminal-spacer {
+  flex: 1;
+}
+
+.home-terminal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.home-terminal-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #16171a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.home-terminal-input:focus-within {
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+.home-terminal-caret {
+  color: #60a5fa;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 700;
+}
+
+.home-terminal-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #e2e8f0;
+}
+
+.home-terminal-field::placeholder {
+  color: #5c6474;
+}
+
+.home-terminal-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0b1020;
+  background: #cbd5e1;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.home-terminal-submit:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.home-terminal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  color: #94a3b8;
+  background: #1c1d21;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.home-select select {
+  background: transparent;
+  border: none;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.home-select select option {
+  background: #1c1d21;
+  color: #e2e8f0;
+}
+
+.home-terminal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #cbd5e1;
+  background: rgba(34, 35, 39, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.home-pill-button:hover {
+  background: #2a2b30;
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.home-pill-button.is-accent {
+  color: #0b1020;
+  background: #cbd5e1;
+  border-color: transparent;
+}
+
+.home-pill-button.is-accent:hover {
+  background: #e2e8f0;
+}
+
+.home-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.home-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7b8494;
+}
+
+.home-empty {
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #7b8494;
+  background: var(--card);
+  border: 1px dashed var(--border);
+}
+
+.home-project-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.home-project-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #232428;
+}
+
+.home-project-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.home-project-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #7b8494;
+}
+
+.home-quick-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.home-quick-action:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: #232428;
+}
+
+.home-quick-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.home-usage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.home-live-badge,
+.home-idle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.home-live-badge {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.home-idle-badge {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.home-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: lunar-pulse 1.8s ease-in-out infinite;
+}
+
+.home-idle-badge .home-live-dot {
+  animation: none;
+  opacity: 0.6;
+}
+
+.home-usage-track {
+  position: relative;
+  height: 6px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.home-usage-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+}
+
+/* Theming helpers so home text adapts across light/dark. */
+.home-text-strong {
+  color: #e2e8f0;
+}
+
+.home-text-muted {
+  color: #94a3b8;
+}
+
+.home-text-faint {
+  color: #7b8494;
+}
+
+:root:not(.dark) .home-text-strong {
+  color: #0f172a;
+}
+
+:root:not(.dark) .home-text-muted {
+  color: #475569;
+}
+
+:root:not(.dark) .home-text-faint {
+  color: #64748b;
+}
+
+:root:not(.dark) .home-hero-greeting {
+  color: #0f172a;
+}
+
+:root:not(.dark) .home-hero-name {
+  color: #1e293b;
+}
+
+:root:not(.dark) .home-terminal-field {
+  color: #0f172a;
+}
+
+:root:not(.dark) .home-terminal-field::placeholder {
+  color: #94a3b8;
+}
+
+:root:not(.dark) .home-terminal-input {
+  background: #f7f8fa;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+:root:not(.dark) .home-terminal-bar {
+  background: #eceef2;
+}
+
+:root:not(.dark) .home-terminal-title {
+  color: #64748b;
+}
+
+:root:not(.dark) .home-select {
+  background: #f1f2f5;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+:root:not(.dark) .home-select select {
+  color: #334155;
+}
+
+:root:not(.dark) .home-select select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+:root:not(.dark) .home-pill-button {
+  color: #334155;
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+:root:not(.dark) .home-pill-button:hover {
+  background: #f1f2f5;
+}
+
+:root:not(.dark) .home-pill-button.is-accent {
+  color: #ffffff;
+  background: #0f172a;
+}
+
+:root:not(.dark) .home-pill-button.is-accent:hover {
+  background: #1e293b;
+}
+
+:root:not(.dark) .home-project-card:hover,
+:root:not(.dark) .home-quick-action:hover {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+:root:not(.dark) .home-project-icon,
+:root:not(.dark) .home-quick-action-icon {
+  color: #334155;
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.05);
+}
+
+:root:not(.dark) .home-terminal-submit {
+  color: #ffffff;
+  background: #0f172a;
+}
+
+:root:not(.dark) .home-terminal-submit:hover {
+  background: #1e293b;
+}
+
+:root:not(.dark) .home-usage-track {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+@keyframes lunar-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-live-dot {
+    animation: none;
+  }
+
+  [data-tab-id],
+  .home-project-card,
+  .home-quick-action,
+  .home-pill-button {
+    transition: none;
+  }
+}
+
+/* Reduce the shell's global translucency — the native window already
+   composites blur, and stacking more made panels read as washed out. */
+html.native-shell.dark .bg-worktree-sidebar,
+html.native-shell.dark .bg-sidebar {
+  background: #1f2024 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.native-shell:not(.dark) .bg-worktree-sidebar,
+html.native-shell:not(.dark) .bg-sidebar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

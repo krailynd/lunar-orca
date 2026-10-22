@@ -199,6 +199,13 @@ export async function fetchAntigravityRateLimits(
       )
     }
     if (failure) {
+      if (failure.failureKind === 'no-subscription') {
+        return unavailable(
+          'Antigravity usage is not available. This Google account was disabled or has no active plan.',
+          failure.failureKind,
+          now()
+        )
+      }
       return failed(
         FAILURE_REASONS[failure.failureKind] ??
           'Antigravity usage is not available. The CLI could not read this account’s quota.',

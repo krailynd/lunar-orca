@@ -41,6 +41,7 @@ export const STATIC_RIGHT_SIDEBAR_TABS = [
   'explorer',
   'search',
   'vault',
+  'todos',
   'workspaces',
   'pr-checks',
   'source-control',
@@ -119,7 +120,9 @@ export const TopLevelViewSchema = z.enum([
   'artifacts',
   'mobile',
   'home',
-  'lunargrip'
+  'lunargrip',
+  'agents-office',
+  'orlack'
 ])
 
 export const UiUpdateFields = z
