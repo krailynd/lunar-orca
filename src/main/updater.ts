@@ -94,5 +94,10 @@ export function dismissAvailableUpdate(): void {
 }
 
 export function setupAutoUpdater(mainWindow: BrowserWindow, opts?: UpdaterSetupOptions): void {
+  // Why: In Lunar Orca, disable automatic polling against upstream stablyai/orca
+  // to prevent prompt loops that overwrite local custom features and native mods.
+  if (process.env.ORCA_ENABLE_UPSTREAM_AUTO_UPDATE !== '1') {
+    return
+  }
   updater.setupAutoUpdater(mainWindow, opts)
 }

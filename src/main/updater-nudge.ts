@@ -9,6 +9,10 @@ export type NudgeConfig = {
 }
 
 export async function fetchNudge(): Promise<NudgeConfig | null> {
+  // Why: In Lunar Orca, disable upstream campaign nudges that trigger update popups.
+  if (process.env.ORCA_ENABLE_UPSTREAM_AUTO_UPDATE !== '1') {
+    return null
+  }
   try {
     const res = await net.fetch('https://onorca.dev/whats-new/nudge.json', {
       signal: AbortSignal.timeout(5000)
