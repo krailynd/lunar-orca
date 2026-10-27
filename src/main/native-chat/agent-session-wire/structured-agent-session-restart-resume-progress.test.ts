@@ -4,8 +4,8 @@ import type { AgentSessionStatusSummary } from '../../../shared/agent-session-wi
 import { AgentSessionRecoveryCapsule } from '../../runtime/agent-session-recovery-capsule'
 import {
   interruptedRestart,
-  startAgent,
-  throwAfterContinuationAccepted
+  continuationCannotFold,
+  startAgent
 } from './structured-agent-session-restart-interruption-test-harness'
 import { HOST_TEST_SESSION as SESSION } from './structured-agent-session-host-test-data'
 import { createRestartResumeProgress } from './structured-agent-session-restart-resume-progress'
@@ -178,7 +178,7 @@ it.each(['continued', 'refused', 'unconfirmed'] as const)(
       acquire.mockRejectedValueOnce(new Error('start refused'))
     }
     if (phase === 'unconfirmed') {
-      throwAfterContinuationAccepted()
+      continuationCannotFold()
     }
     const bookkeeping = Promise.withResolvers<void>()
     const complete = AgentSessionRecoveryCapsule.prototype.completeResume
@@ -198,7 +198,7 @@ it.each(['continued', 'refused', 'unconfirmed'] as const)(
       expect(finished).toBe(false)
       expect(summaries.map((summary) => summary.restartResume?.phase)).toContain('queued')
       expect(summaries.map((summary) => summary.restartResume?.phase)).toContain('starting')
-      // Reopening takes a snapshot of the same live action, without needing its earlier frames.
+      // Reopened subscribers need a current action snapshot without prior frames.
       const snapshots: AgentSessionStatusSummary[] = []
       const closeSnapshot = host.subscribeStatus({
         id: 'reopen',

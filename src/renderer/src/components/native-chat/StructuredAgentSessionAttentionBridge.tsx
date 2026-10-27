@@ -9,7 +9,7 @@ import {
 import { findStructuredAgentSessionReadOwner } from './structured-agent-session-read-owner'
 import { structuredAttentionReadObservation } from './structured-attention-read-observation'
 import { useAppStore } from '@/store'
-import type { RuntimeClientTarget } from '@/runtime/runtime-rpc-client'
+import type { RuntimeClientTarget } from '../../../../shared/runtime-client-target'
 import {
   structuredAgentSessionOwnerForTab,
   structuredAgentSessionTargetForHost
@@ -27,15 +27,7 @@ import {
 } from './structured-attention-dispatch'
 import { getStructuredAgentSessionTabs, type StructuredTab } from './structured-agent-session-tabs'
 
-/**
- * One subscription per open structured tab, so a finished or asking chat lights its unread
- * indicators whether or not its transcript is on screen, and reading it withdraws the phone alerts
- * its host pushed.
- *
- * Subscribing per tab rather than once per host is what makes this correct, not just convenient:
- * the tab IS the attention surface. A completion for a session with no open tab has no surface to
- * mark and no liveness evidence in this process, and the surface adapter would reject it anyway.
- */
+/** Subscribe per open tab: attention needs that tab’s surface/liveness, and reading it retires its host-pushed phone alerts. */
 function StructuredAgentSessionAttention({
   tab
 }: {

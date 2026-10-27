@@ -1,19 +1,23 @@
+import type { ProcessSpec } from '@orca/process-host/process-spec'
 import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type * as RunProcessModule from '../../shared/child-process/run-process'
+import type * as RunProcessModule from '@orca/process-host'
 
 const { runProcessMock, spawnProcessMock } = vi.hoisted(() => ({
   runProcessMock: vi.fn(),
   spawnProcessMock: vi.fn()
 }))
 
-vi.mock('../../shared/child-process/run-process', async (importOriginal) => ({
+vi.mock('@orca/process-host', async (importOriginal) => ({
   ...(await importOriginal<typeof RunProcessModule>()),
   runProcess: runProcessMock,
   spawnProcess: spawnProcessMock
 }))
+
+// Real macOS installs would register a park in the developer’s home.
+vi.mock('./orcad-browser-install-park', () => ({ openOrcadBrowserInstallPark: () => null }))
 
 import { resolveOrcadBrowserProvider, type OrcadBrowserProvider } from './orcad-browser-provider'
 
@@ -26,7 +30,6 @@ let chromiumExecutable: string
 let sidecarMode: string | undefined
 let provider: OrcadBrowserProvider | null
 
-/** Strips the session/profile/args prefix the agent-browser invocation carries. */
 function commandFromArgs(args: readonly string[]): string[] {
   let index = 0
   while (['--session', '--profile', '--args'].includes(args[index] ?? '')) {
@@ -57,11 +60,9 @@ beforeEach(async () => {
     await chmod(chromiumExecutable, 0o755)
   }
 
-  const actual = await vi.importActual<typeof RunProcessModule>(
-    '../../shared/child-process/run-process'
-  )
+  const actual = await vi.importActual<typeof RunProcessModule>('@orca/process-host')
   spawnProcessMock.mockReset()
-  spawnProcessMock.mockImplementation((spec: RunProcessModule.ProcessSpec) =>
+  spawnProcessMock.mockImplementation((spec: ProcessSpec) =>
     actual.spawnProcess({
       ...spec,
       program: process.execPath,
@@ -74,7 +75,7 @@ beforeEach(async () => {
     })
   )
   runProcessMock.mockReset()
-  runProcessMock.mockImplementation(async (spec: RunProcessModule.ProcessSpec) => {
+  runProcessMock.mockImplementation(async (spec: ProcessSpec) => {
     const command = commandFromArgs(spec.args ?? [])
     if (command[0] === 'open') {
       return agentBrowserSuccess({ url: 'about:blank', title: '' })

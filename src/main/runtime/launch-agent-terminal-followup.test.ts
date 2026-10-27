@@ -1,5 +1,4 @@
-// A headless automation launches on an existing workspace through launchAgentTerminal; agents that
-// read their prompt after they start never got it because the startup follow-up was dropped.
+// Headless automation must deliver post-start prompts through the launch executor.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({
@@ -70,6 +69,18 @@ describe('launchAgentTerminal startup follow-up', () => {
     await runtime.launchAgentTerminal('id:repo-1::/home/me/app-feature', {
       agent: 'claude',
       prompt: 'fix the flaky test'
+    })
+
+    expect(createTerminal).toHaveBeenCalledTimes(1)
+    expect(sendFollowup).not.toHaveBeenCalled()
+  })
+
+  it('sends no follow-up for a post-start agent launched without a prompt', async () => {
+    const { runtime, createTerminal, sendFollowup } = makeRuntime()
+
+    await runtime.launchAgentTerminal('id:repo-1::/home/me/app-feature', {
+      agent: 'aider',
+      prompt: ''
     })
 
     expect(createTerminal).toHaveBeenCalledTimes(1)

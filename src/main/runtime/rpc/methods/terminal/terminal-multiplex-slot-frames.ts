@@ -5,8 +5,7 @@ import {
 } from '../../../../../shared/terminal-stream-protocol'
 import {
   TerminalMultiplexLegacyAckFrame,
-  TerminalMultiplexSnapshotRequestFrame,
-  TerminalMultiplexSourceRangeAckFrame
+  TerminalMultiplexSnapshotRequestFrame
 } from './stream-schemas'
 import { getTerminalInputSequenceLedger } from './terminal-input-sequence-ledger'
 import { handleMultiplexInputFrame } from './terminal-multiplex-input-frame'
@@ -19,22 +18,44 @@ import {
   serializeBudgetedRequestedSnapshot
 } from './terminal-snapshot-publication'
 import { updateViewportForClient } from './terminal-viewport-update'
-import type {
-  MultiplexSnapshotRequest,
-  TerminalMultiplexCleanupStage,
-  TerminalMultiplexConnection,
-  TerminalMultiplexSlotFramesStage
+import { notePausedOutputDropped } from './terminal-multiplex-paused-output-drop'
+import { answerUndeliveredYieldedQueries } from './terminal-multiplex-yielded-queries'
+import {
+  isMultiplexStreamAttached,
+  type MultiplexSnapshotRequest,
+  type TerminalMultiplexConnection
 } from './terminal-multiplex-connection'
-import type { TerminalMultiplexStream } from './terminal-stream-types'
+import type { TerminalMultiplexStream, TerminalViewportClient } from './terminal-stream-types'
 
-export function installMultiplexSlotFrames(
-  build: TerminalMultiplexCleanupStage
-): asserts build is TerminalMultiplexSlotFramesStage {
-  const state = build as TerminalMultiplexConnection
+function decodeViewportFrame(
+  payload: TerminalStreamFrame['payload']
+): { cols: number; rows: number } | null {
+  const viewport = decodeTerminalStreamJson<{ cols?: unknown; rows?: unknown }>(payload)
+  return viewport && typeof viewport.cols === 'number' && typeof viewport.rows === 'number'
+    ? { cols: viewport.cols, rows: viewport.rows }
+    : null
+}
+
+export function installMultiplexSlotFrames(state: TerminalMultiplexConnection): void {
   const { runtime, streams } = state
   const inputSequenceLedger = getTerminalInputSequenceLedger(runtime)
+  const applyStreamViewport = (
+    stream: TerminalMultiplexStream,
+    client: TerminalViewportClient,
+    viewport: { cols: number; rows: number }
+  ) =>
+    updateViewportForClient(
+      runtime,
+      stream.ptyId,
+      stream.remoteDesktopSubscriptionKey,
+      client,
+      viewport,
+      stream.isMobile ? 'mobile' : 'desktop',
+      'register',
+      !stream.supportsDesktopViewportClaims
+    )
   state.handleSlotFrame = (stream: TerminalMultiplexStream, frame: TerminalStreamFrame): void => {
-    if (state.closed || streams.get(stream.streamId) !== stream) {
+    if (!isMultiplexStreamAttached(state, stream)) {
       return
     }
     if (frame.opcode === TerminalStreamOpcode.Unsubscribe) {
@@ -44,20 +65,9 @@ export function installMultiplexSlotFrames(
     }
     if (frame.opcode === TerminalStreamOpcode.Ack) {
       const payload = decodeTerminalStreamJson<unknown>(frame.payload) ?? {}
-      if (stream.ackOutputSourceRanges) {
-        const parsed = TerminalMultiplexSourceRangeAckFrame.safeParse(payload)
-        if (parsed.success) {
-          state.acknowledgeSourceRanges(
-            stream,
-            parsed.data.streamGeneration,
-            parsed.data.ackedEndByte
-          )
-        }
-      } else {
-        const parsed = TerminalMultiplexLegacyAckFrame.safeParse(payload)
-        if (parsed.success) {
-          state.acknowledgeOutput(stream, parsed.data.bytes)
-        }
+      const parsed = TerminalMultiplexLegacyAckFrame.safeParse(payload)
+      if (parsed.success) {
+        state.acknowledgeOutput(stream, parsed.data.bytes)
       }
       return
     }
@@ -70,42 +80,41 @@ export function installMultiplexSlotFrames(
       if (typeof payload?.paused !== 'boolean' || stream.outputPaused === payload.paused) {
         return
       }
+      if (payload.paused) {
+        // Why: main yielded these batched bytes' query replies to this view at ingestion, so deliver them rather than drop them.
+        stream.outputBatcher.flush()
+      }
       stream.outputPaused = payload.paused
       if (stream.outputPaused) {
-        stream.outputBatcher.flush()
+        stream.pausedOutputDropNoticeSent = false
+        const discardsQueuedOutput =
+          stream.ackPendingOutput.length > 0 || stream.ackPendingOutputOverflowed
         stream.ackPendingOutput = []
         stream.ackPendingOutputBytes = 0
         stream.ackPendingOutputOverflowed = false
+        answerUndeliveredYieldedQueries(runtime, stream)
+        if (discardsQueuedOutput) {
+          notePausedOutputDropped(state, stream)
+        }
       }
       return
     }
     if (frame.opcode === TerminalStreamOpcode.Resize && stream.client) {
-      const viewport = decodeTerminalStreamJson<{ cols?: unknown; rows?: unknown }>(frame.payload)
-      if (!viewport || typeof viewport.cols !== 'number' || typeof viewport.rows !== 'number') {
+      const viewport = decodeViewportFrame(frame.payload)
+      if (!viewport) {
         return
       }
-      const cols = viewport.cols
-      const rows = viewport.rows
-      // Why: resize registers stream-scoped geometry so detach can release it; older clients lack explicit claims.
+      // Register stream geometry for detach cleanup; older clients cannot claim explicitly.
       if (!stream.isMobile && stream.client?.id) {
         stream.registeredRemoteDesktopDriver = true
         if (stream.buffering) {
-          stream.pendingRemoteDesktopViewport = { cols: viewport.cols, rows: viewport.rows }
+          stream.pendingRemoteDesktopViewport = viewport
           return
         }
       }
       stream.desktopClaimTail = stream.desktopClaimTail
         .then(async (priorClaimed) => {
-          const result = await updateViewportForClient(
-            runtime,
-            stream.ptyId,
-            stream.remoteDesktopSubscriptionKey,
-            stream.client!,
-            { cols, rows },
-            stream.isMobile ? 'mobile' : 'desktop',
-            'register',
-            !stream.supportsDesktopViewportClaims
-          )
+          const result = await applyStreamViewport(stream, stream.client!, viewport)
           return stream.supportsDesktopViewportClaims
             ? priorClaimed && result.applied
             : result.applied
@@ -114,35 +123,21 @@ export function installMultiplexSlotFrames(
       return
     }
     if (frame.opcode === TerminalStreamOpcode.ClaimViewport && stream.client && !stream.isMobile) {
-      const viewport = decodeTerminalStreamJson<{ cols?: unknown; rows?: unknown }>(frame.payload)
-      if (!viewport || typeof viewport.cols !== 'number' || typeof viewport.rows !== 'number') {
+      const viewport = decodeViewportFrame(frame.payload)
+      if (!viewport) {
         return
       }
-      const cols = viewport.cols
-      const rows = viewport.rows
       stream.registeredRemoteDesktopDriver = true
-      stream.desktopClaimTail = stream.desktopClaimTail
-        .then(
-          () =>
-            runtime.updateRemoteDesktopViewer(
-              stream.ptyId,
-              stream.remoteDesktopSubscriptionKey,
-              stream.client!.id,
-              cols,
-              rows,
-              true
-            ),
-          () =>
-            runtime.updateRemoteDesktopViewer(
-              stream.ptyId,
-              stream.remoteDesktopSubscriptionKey,
-              stream.client!.id,
-              cols,
-              rows,
-              true
-            )
+      const claim = () =>
+        runtime.updateRemoteDesktopViewer(
+          stream.ptyId,
+          stream.remoteDesktopSubscriptionKey,
+          stream.client!.id,
+          viewport.cols,
+          viewport.rows,
+          true
         )
-        .catch(() => false)
+      stream.desktopClaimTail = stream.desktopClaimTail.then(claim, claim).catch(() => false)
       return
     }
     if (frame.opcode === TerminalStreamOpcode.SnapshotRequest) {
@@ -156,7 +151,7 @@ export function installMultiplexSlotFrames(
     stream: TerminalMultiplexStream,
     request: MultiplexSnapshotRequest
   ): Promise<void> => {
-    if (state.closed || streams.get(stream.streamId) !== stream) {
+    if (!isMultiplexStreamAttached(state, stream)) {
       return
     }
     stream.outputBatcher.flush()
@@ -171,18 +166,18 @@ export function installMultiplexSlotFrames(
         stream.ptyId,
         scrollbackRows
       )
-      if (state.closed || streams.get(stream.streamId) !== stream) {
+      if (!isMultiplexStreamAttached(state, stream)) {
         return
       }
       let size = runtime.getTerminalSize(stream.ptyId)
       let displayMode = runtime.getMobileDisplayMode(stream.ptyId)
       if (stream.pendingOutputOverflowed) {
-        // Why: the overflowed tail is newer than the first snapshot, so retry for a current image instead of null.
+        // Overflow tail is newer than the initial snapshot; request a current image rather than return null.
         stream.pendingOutput.splice(0)
         stream.pendingOutputBytes = 0
         stream.pendingOutputOverflowed = false
         serialized = await serializeBudgetedRequestedSnapshot(runtime, stream.ptyId, scrollbackRows)
-        if (state.closed || streams.get(stream.streamId) !== stream) {
+        if (!isMultiplexStreamAttached(state, stream)) {
           return
         }
         size = runtime.getTerminalSize(stream.ptyId)
@@ -223,7 +218,7 @@ export function installMultiplexSlotFrames(
         truncated: false,
         truncatedByByteBudget: serialized?.truncatedByByteBudget,
         scrollbackRows: serialized?.scrollbackRows,
-        // Why: no serializer answered, which is not proof the pane is empty — say so instead of passing off '' as the buffer.
+        // No serializer answer does not prove emptiness; never publish an invented empty buffer.
         unavailable: serialized ? undefined : 'no-serializable-buffer',
         data: serialized?.data ?? ''
       })
@@ -239,10 +234,7 @@ export function installMultiplexSlotFrames(
         const pendingOutput = stream.pendingOutput.splice(0)
         if (shouldFlushPendingOutput) {
           for (const chunk of pendingOutput) {
-            // Why: an untagged reply resets the client to the snapshot's
-            // high-water, so covered bytes would render twice; tagged
-            // snapshots feed a side consumer and the live view still
-            // needs every buffered chunk.
+            // Untagged snapshots reset live high-water, so suppress covered bytes; tagged side-consumer snapshots still owe live every chunk.
             const uncovered =
               typeof requestId === 'number'
                 ? chunk
@@ -255,7 +247,7 @@ export function installMultiplexSlotFrames(
         stream.pendingOutputBytes = 0
         stream.pendingOutputOverflowed = false
         stream.outputBatcher.flush()
-        // Why: a resize parked during snapshot buffering must be applied now, or it is dropped until the viewer's next resize.
+        // Apply resize parked during buffering now or it waits until the viewer resizes again.
         if (
           !stream.isMobile &&
           stream.client?.id &&
@@ -264,16 +256,7 @@ export function installMultiplexSlotFrames(
         ) {
           const viewport = stream.pendingRemoteDesktopViewport
           stream.pendingRemoteDesktopViewport = null
-          void updateViewportForClient(
-            runtime,
-            stream.ptyId,
-            stream.remoteDesktopSubscriptionKey,
-            stream.client,
-            viewport,
-            'desktop',
-            'register',
-            !stream.supportsDesktopViewportClaims
-          ).catch(() => {})
+          void applyStreamViewport(stream, stream.client, viewport).catch(() => {})
         }
       }
     }

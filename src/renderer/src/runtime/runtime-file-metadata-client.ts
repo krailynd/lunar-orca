@@ -1,7 +1,7 @@
 import type { MarkdownDocument } from '../../../shared/filesystem-entry-types'
 import type { RuntimeFileOperationArgs } from './runtime-file-client-types'
 import { assertLocalFilesystemFallbackAllowed, getRemoteFileArgs } from './runtime-file-routing'
-import { callRuntimeRpc, getActiveRuntimeTarget } from './runtime-rpc-client'
+import { callRuntimeRpc } from './runtime-rpc-client'
 import { toRuntimeWorktreeSelector } from './runtime-worktree-selector'
 import type { LocalFileAccess } from '../../../shared/local-file-access'
 import { localAccess } from './runtime-file-read-client'
@@ -10,7 +10,7 @@ export async function listRuntimeMarkdownDocuments(
   context: RuntimeFileOperationArgs,
   rootPath: string
 ): Promise<MarkdownDocument[]> {
-  const target = getActiveRuntimeTarget(context.settings)
+  const target = context.target
   if (target.kind !== 'environment' || !context.worktreeId) {
     return window.api.fs.listMarkdownDocuments({
       rootPath,
@@ -50,7 +50,11 @@ export async function statRuntimePath(
 export function isMissingRuntimePathError(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
   return (
-    message.includes('enoent') || message.includes('not found') || message.includes('no such file')
+    message.includes('enoent') ||
+    message.includes('not found') ||
+    message.includes('no such file') ||
+    // Old hosts’ full ENOTDIR errno means absence like ENOENT; do not mistake a filename beginning enotdir for an error.
+    message.includes('enotdir: not a directory')
   )
 }
 

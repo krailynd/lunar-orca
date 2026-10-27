@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTestStore, makeTab, seedStore, makeWorktree } from './store-test-helpers'
+import { createTestStore, makeTab, seedStore } from './store-test-helpers'
 import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/terminal-tab-types'
 
 {
@@ -38,13 +38,13 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
           [worktreeId]: [makeTab({ id: 'tab-1', worktreeId, ptyId: replacementPtyId })]
         },
         ptyIdsByTabId: { 'tab-1': [replacementPtyId] },
-        pendingCodexPaneRestartIds: { [stalePtyId]: true }
+        pendingPaneAccountRestarts: { [stalePtyId]: 'codex' }
       })
 
       store.getState().updateTabPtyId('tab-1', replacementPtyId, stalePtyId)
 
       expect(store.getState().ptyIdsByTabId['tab-1']).toEqual([replacementPtyId])
-      expect(store.getState().pendingCodexPaneRestartIds).toEqual({ [replacementPtyId]: true })
+      expect(store.getState().pendingPaneAccountRestarts).toEqual({ [replacementPtyId]: 'codex' })
     })
 
     it('publishes pane and tab replacement identities in one store commit', () => {
@@ -86,20 +86,7 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
 }
 
 {
-  /**
-   * Perf regression: setCacheTimerStartedAt and setTabLayout must not publish
-   * state when the write is a no-op.
-   *
-   * Both actions previously spread a fresh object and returned it unconditionally,
-   * so every redundant call produced a new AppState object and woke EVERY zustand
-   * subscriber — which, with per-pane selectors across all mounted panes, is an
-   * O(panes) sweep per write. The cadence is real: parked-terminal-byte-watcher
-   * writes a null cache timer on every agent working/exit/stale-title transition,
-   * and TerminalPane re-persists its layout on pane-title churn.
-   *
-   * These tests count subscriber wakeups on a real store; the pre-fix numbers are
-   * 1_000 (one per call), the post-fix numbers are 0.
-   */
+  /** Cache-timer/title churn repeats equal writes; subscriber-count assertions require no-op timer/layout updates to avoid O(panes) fanout (1,000 before, zero after). */
 
   const REPEATS = 1_000
 
@@ -274,8 +261,7 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
     })
 
     it('does not fire pane-ownership transfers for a bailed-out identical layout', () => {
-      // A duplicate-pty layout normalizes to a transfer; replaying the already-normalized
-      // snapshot must be inert, since normalization then finds nothing to move.
+      // Duplicate-PTY normalization transfers ownership; replaying its normalized result must publish nothing.
       const store = createTestStore()
       const duplicate = makeLayout({
         ptyIdsByLeafId: { 'leaf-a': 'pty-a', 'leaf-b': 'pty-a' }
@@ -284,7 +270,7 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
       const normalized = store.getState().terminalLayoutsByTabId['tab-1']
       expect(normalized.ptyIdsByLeafId).not.toEqual(duplicate.ptyIdsByLeafId)
 
-      store.getState().markTerminalPaneUnread('tab-1:leaf-a', 'terminal-bell')
+      store.setState({ unreadTerminalPanes: { 'tab-1:leaf-a': 'terminal-bell' } })
       const beforeUnread = { ...store.getState().unreadTerminalPanes }
 
       for (let i = 0; i < REPEATS; i += 1) {
@@ -309,75 +295,6 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
       store.getState().setTabLayout('tab-1', null)
       unsubscribe()
       expect(wakeups).toBe(0)
-    })
-
-    it('guards SSH acknowledgements by captured edit identity and target', () => {
-      const store = createTestStore()
-      const worktreeA = 'repo-a::/tmp/a'
-      const worktreeB = 'repo-b::/tmp/b'
-      store.setState({
-        repos: [
-          {
-            id: 'repo-a',
-            path: '/tmp',
-            displayName: 'Repo A',
-            badgeColor: '#000',
-            addedAt: 0,
-            connectionId: 'target-a'
-          },
-          {
-            id: 'repo-b',
-            path: '/tmp',
-            displayName: 'Repo B',
-            badgeColor: '#000',
-            addedAt: 0,
-            connectionId: 'target-b'
-          }
-        ],
-        worktreesByRepo: {
-          'repo-a': [makeWorktree({ id: worktreeA, repoId: 'repo-a', hostId: 'ssh:target-a' })],
-          'repo-b': [makeWorktree({ id: worktreeB, repoId: 'repo-b', hostId: 'ssh:target-b' })]
-        },
-        tabsByWorktree: {
-          [worktreeA]: [makeTab({ id: 'tab-a', worktreeId: worktreeA })],
-          [worktreeB]: [makeTab({ id: 'tab-b', worktreeId: worktreeB })]
-        }
-      })
-      const empty = { root: null, activeLeafId: null, expandedLeafId: null }
-
-      store.getState().setTabLayout('tab-a', {
-        ...empty,
-        root: { type: 'leaf', leafId: 'leaf-initial' },
-        activeLeafId: 'leaf-initial'
-      })
-      store.getState().setTabLayout('tab-a', empty)
-      const firstEdit = store.getState().pendingDirectSshLayoutEditsByTabId['tab-a']
-      store.getState().setTabLayout('tab-a', {
-        ...empty,
-        root: { type: 'leaf', leafId: 'leaf-a' },
-        activeLeafId: 'leaf-a'
-      })
-      const currentEdit = store.getState().pendingDirectSshLayoutEditsByTabId['tab-a']
-      expect(currentEdit).not.toBe(firstEdit)
-
-      store.getState().acknowledgeDirectSshLayoutEdits({ 'tab-a': firstEdit })
-      expect(store.getState().pendingDirectSshLayoutEditsByTabId['tab-a']).toBe(currentEdit)
-
-      store.getState().setTabLayout('tab-b', {
-        ...empty,
-        root: { type: 'leaf', leafId: 'leaf-initial-b' },
-        activeLeafId: 'leaf-initial-b'
-      })
-      store.getState().setTabLayout('tab-b', empty)
-      const targetBEdit = store.getState().pendingDirectSshLayoutEditsByTabId['tab-b']
-      store.getState().acknowledgeDirectSshLayoutEdits({ 'tab-a': currentEdit })
-      expect(store.getState().pendingDirectSshLayoutEditsByTabId['tab-a']).toBeUndefined()
-      expect(store.getState().pendingDirectSshLayoutEditsByTabId['tab-b']).toBe(targetBEdit)
-
-      store.getState().acknowledgeDirectSshLayoutEdits({
-        'tab-b': { targetId: 'target-a', root: targetBEdit.root }
-      })
-      expect(store.getState().pendingDirectSshLayoutEditsByTabId['tab-b']).toBe(targetBEdit)
     })
   })
 }
@@ -427,9 +344,7 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
       expect(store.getState().paneForegroundAgentByPaneKey).toEqual({})
     })
 
-    // Why: the settle publish drops routingConfirmationPending while every other
-    // compared field stays equal, so the equality short-circuit is the only thing
-    // standing between "confirmation ended" and a pane that keeps CSI-u forever.
+    // Confirmation settle can change only routingConfirmationPending; equality must allow clearing it or CSI-u stays enabled.
     it('lands the publish that clears a pending confirmation', () => {
       const store = createTestStore()
       store.getState().setPaneForegroundAgent('tab-1:leaf-1', {
@@ -453,8 +368,7 @@ import type { TerminalLayoutSnapshot, TerminalTab } from '../../../../shared/ter
       })
     })
 
-    // Why: a reattach seeds the launch agent; the read confirming the same agent must still land,
-    // or sidebar rows would never treat the pane as process-backed.
+    // Same-agent confirmation must still replace launch-only evidence so sidebar recognizes process-backed identity.
     it('lands a process read that confirms a launch-record agent', () => {
       const store = createTestStore()
       store.getState().setPaneForegroundAgent('tab-1:leaf-1', {

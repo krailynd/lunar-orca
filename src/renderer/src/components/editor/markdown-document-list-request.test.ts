@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { MarkdownDocument } from '../../../../shared/filesystem-entry-types'
-import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client'
+import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client-types'
 import {
   getMarkdownDocumentListRequestKey,
   requestSharedMarkdownDocumentList
@@ -8,7 +8,7 @@ import {
 
 function context(overrides: Partial<RuntimeFileOperationArgs> = {}): RuntimeFileOperationArgs {
   return {
-    settings: { activeRuntimeEnvironmentId: null },
+    target: { kind: 'local' as const },
     worktreeId: 'worktree-1',
     worktreePath: '/repo',
     ...overrides
@@ -149,8 +149,7 @@ describe('shared Markdown document list requests', () => {
         load
       )
       now.mockReturnValue(31_001)
-      // A request for a different route sweeps the expired entry so the map
-      // does not pin the abandoned promise for the renderer's lifetime.
+      // A different route must release expired entries, including abandoned promises.
       await expect(
         requestSharedMarkdownDocumentList(context(), '/other-route', {}, load)
       ).resolves.toEqual([])
@@ -171,7 +170,9 @@ describe('shared Markdown document list requests', () => {
   it('keeps runtime routes isolated and encodes unusual paths losslessly', () => {
     const local = context()
     const ssh = context({ connectionId: 'ssh-1' })
-    const runtime = context({ settings: { activeRuntimeEnvironmentId: ' runtime-1 ' } })
+    const runtime = context({
+      target: { kind: 'environment' as const, environmentId: ' runtime-1 ' }
+    })
     const unusualRoot = '/repo\nwith-newline'
     const windowsRoot = 'C:\\repo\\docs'
     const uncRoot = '\\\\server\\share\\repo'

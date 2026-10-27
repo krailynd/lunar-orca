@@ -1,6 +1,4 @@
-// A structured worker whose agent is at rest: its dispatch keeps it running while open, and once it
-// rests it is still this runtime's worker — mail reaches it — until its chat tab is gone. Whether
-// its process runs is a separate answer, and a close counts a released lease as done.
+// Open Dispatches retain active work; chats at rest remain mail recipients until tab retirement. Process liveness and close proof remain separate.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
@@ -15,7 +13,7 @@ vi.mock('../native-chat/agent-session-wire/structured-agent-session-registry', (
 
 const { observeStructuredWorker, resolveStructuredWorkerAuthority, structuredSessionCloseSettled } =
   await import('./structured-worker-authority')
-const { structuredWorkerOwesWork, structuredWorkerOwned } =
+const { structuredWorkerOpenTaskTitle, structuredWorkerOwesWork, structuredWorkerOwned } =
   await import('./structured-worker-custody')
 const {
   mintStructuredWorkerHandle,
@@ -25,7 +23,8 @@ const {
 } = await import('./structured-worker-identity')
 const { listAddressableStructuredWorkers } =
   await import('./orchestration/structured-worker-group-addressing')
-const { closeStructuredAgentSessionChild } = await import('./structured-agent-session-close')
+const { closeStructuredAgentSessionChild } =
+  await import('./agent-session/structured-agent-session-close')
 const { resolveGroupAddress } = await import('./orchestration/groups')
 const { createRestTestRig, foundRestTestChat, IDLE_MS, REST_TEST_SESSION, sweepTicks } =
   await import('../native-chat/agent-session-wire/structured-agent-session-rest-test-rig')
@@ -127,6 +126,24 @@ describe('an open dispatch keeps its worker running (P2-19 i)', () => {
     expect(structuredWorkerOwesWork(db, record({}))).toBe(true)
     db.settleWorkerStop(dispatch.id)
     expect(structuredWorkerOwesWork(db, record({}))).toBe(false)
+  })
+
+  it('names the worker after the task it still owes, and nothing once that settles', () => {
+    const dispatch = dispatchWorker()
+    expect(structuredWorkerOpenTaskTitle(db, record({}))).toEqual({ title: 'structured work' })
+    db.markWorkerDispatchReady(dispatch.id)
+    db.beginWorkerStop(dispatch.id, 'epoch_home')
+    db.settleWorkerStop(dispatch.id)
+    expect(structuredWorkerOpenTaskTitle(db, record({}))).toBeNull()
+    expect(structuredWorkerOpenTaskTitle(null, record({}))).toBeNull()
+  })
+
+  it('derives the title of an owned open worker task with a legacy null title', () => {
+    const dispatch = dispatchWorker()
+    db.db.prepare('UPDATE tasks SET task_title = NULL WHERE id = ?').run(dispatch.task_id)
+    expect(structuredWorkerOpenTaskTitle(db, record({}))).toEqual({ title: 'structured work' })
+    db.db.prepare("UPDATE tasks SET spec = '' WHERE id = ?").run(dispatch.task_id)
+    expect(structuredWorkerOpenTaskTitle(db, record({}))).toEqual({ title: '' })
   })
 
   // Custody is the list state coordinators see: `active` owes work, `reclaimable` does not.
@@ -343,7 +360,7 @@ describe('a task dispatched into a worker whose own dispatch settled', () => {
       await vi.waitFor(() =>
         expect(observeStructuredWorker({ sessionId: REST_TEST_SESSION }).status).toBe('exited')
       )
-      expect(rig.adapter.closeSession).toHaveBeenCalledWith(REST_TEST_SESSION)
+      expect(rig.adapter.closeSession).toHaveBeenCalledWith(REST_TEST_SESSION, undefined)
     } finally {
       hostRef.current = null
       await rig.dispose()

@@ -10,36 +10,37 @@ import {
   type AgentModelCatalogListing
 } from './agent-model-catalog-entry'
 import { isStructuredAgentId } from '../../../shared/agent-session-provider-handle-encoding'
+import { isRecord } from '../../../shared/agent-status-child-work-value-guards'
 
-const SCHEMA_VERSION = 2
+// Older catalogs lack serviceTiers and cannot safely construct Fast requests.
+const SCHEMA_VERSION = 3
 const SAVE_COALESCE_MS = 500
 
 export type AgentModelCatalogPersistence = {
   load: () => Promise<AgentModelCatalogEntry[]>
-  /** Fire-and-forget, coalesced; a failed write never surfaces to a caller. */
+  /** Coalesce saves; failures leave the in-memory store authoritative. */
   save: (entries: readonly AgentModelCatalogEntry[]) => void
-  /** Writes a coalesced save now; the delay timer is unref'd, so quit must not rely on it. */
+  /** Flush at quit because the delayed-save timer is unref'd. */
   flush: () => Promise<void>
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: a non-null `typeof === 'object'` value is indexable by string key.
-  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null
+  return isRecord(value) ? value : null
 }
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value ? value : null
 }
 
-function parseEffort(value: unknown): AgentSessionOptionChoice | null {
+function parseChoice(value: unknown): AgentSessionOptionChoice | null {
   const row = asRecord(value)
-  const effort = text(row?.value)
+  const choice = text(row?.value)
   const label = text(row?.label)
-  if (!effort || !label) {
+  if (!choice || !label) {
     return null
   }
   const description = text(row?.description)
-  return { value: effort, label, ...(description ? { description } : {}) }
+  return { value: choice, label, ...(description ? { description } : {}) }
 }
 
 function parseModel(value: unknown): AgentSessionModelOption | null {
@@ -49,20 +50,34 @@ function parseModel(value: unknown): AgentSessionModelOption | null {
   if (!row || !id || !label || !Array.isArray(row.efforts)) {
     return null
   }
-  const efforts = row.efforts.map(parseEffort)
+  const efforts = row.efforts.map(parseChoice)
   if (efforts.some((effort) => effort === null)) {
     return null
   }
+  const serviceTiers = Array.isArray(row.serviceTiers)
+    ? row.serviceTiers
+        .map(parseChoice)
+        .filter((tier): tier is AgentSessionOptionChoice => tier !== null)
+    : undefined
   const description = text(row.description)
   const defaultEffort = text(row.defaultEffort)
+  const resolvedModel = text(row.resolvedModel)
   return {
     id,
     label,
+    ...(resolvedModel ? { resolvedModel } : {}),
+    ...(row.effortsKnown === false ? { effortsKnown: false as const } : {}),
     ...(description ? { description } : {}),
     isDefault: row.isDefault === true,
     ...(defaultEffort ? { defaultEffort } : {}),
     efforts: efforts.filter((effort): effort is AgentSessionOptionChoice => effort !== null),
-    ...(typeof row.supportsFastMode === 'boolean' ? { supportsFastMode: row.supportsFastMode } : {})
+    ...(typeof row.supportsFastMode === 'boolean'
+      ? { supportsFastMode: row.supportsFastMode }
+      : {}),
+    ...(typeof row.supportsAutoMode === 'boolean'
+      ? { supportsAutoMode: row.supportsAutoMode }
+      : {}),
+    ...(serviceTiers ? { serviceTiers } : {})
   }
 }
 
@@ -81,7 +96,6 @@ function parseListing(value: unknown): AgentModelCatalogListing | null {
   if (models.some((model) => model === null)) {
     return null
   }
-  const tiers = asRecord(row.fastModeTierByModel)
   const support = asRecord(row.fastModeSupport)
   const supported = support?.supported
   const supportReason = text(support?.reason)
@@ -95,22 +109,21 @@ function parseListing(value: unknown): AgentModelCatalogListing | null {
           }
         }
       : {}),
-    fastModeTierByModel: Object.fromEntries(
-      Object.entries(tiers ?? {}).filter(
-        (pair): pair is [string, string] => typeof pair[1] === 'string'
-      )
-    ),
     origin: row.origin,
-    at: row.at
+    at: row.at,
+    ...(row.complete === true ? { complete: true } : {})
   }
 }
 
-/** Checked reconstruction rather than trust: a field a future schema drops or
- *  reshapes loads as "no entry", never as a corrupt catalog. */
+/** Reject incompatible rows rather than trusting persisted schema shapes. */
 function parseEntry(value: unknown): AgentModelCatalogEntry | null {
   const row = asRecord(value)
   if (!row || !isStructuredAgentId(row.agent) || typeof row.fingerprint !== 'string') {
     return null
+  }
+  if (row.agent === 'claude' || row.agent === 'codex') {
+    const display = parseListing(row.discovered) ?? parseListing(row.live)
+    return agentModelCatalogEntry(row.agent, row.fingerprint, display, null, null)
   }
   const configured = asRecord(row.configured)
   const configuredModelId = text(configured?.modelId)
@@ -134,7 +147,7 @@ function parseEntry(value: unknown): AgentModelCatalogEntry | null {
   )
 }
 
-/** Only the two listings and the configured default are written; the merged view is derived again on load. */
+// Persist source listings/default facts; derive the merged view on load.
 function persistedEntry(entry: AgentModelCatalogEntry): unknown {
   return {
     agent: entry.agent,
@@ -145,8 +158,6 @@ function persistedEntry(entry: AgentModelCatalogEntry): unknown {
   }
 }
 
-/** One JSON file of last-good entries. Success-only by construction: failures
- *  are never handed to `save`, and a malformed file loads as empty. */
 export function createAgentModelCatalogFilePersistence(
   directory: string
 ): AgentModelCatalogPersistence {
@@ -179,7 +190,7 @@ export function createAgentModelCatalogFilePersistence(
         )
         await rename(tmpPath, filePath)
       } catch {
-        // Bookkeeping only; the in-memory store stays authoritative this run.
+        // Persistence is optional bookkeeping; preserve the current in-memory catalog.
       }
     })
     return writing

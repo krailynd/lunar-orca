@@ -1,3 +1,4 @@
+import { isRemoteRuntimePtyId } from '../../../../shared/remote-runtime-pty-id'
 import { useEffect, useRef } from 'react'
 import {
   FOCUS_TERMINAL_PANE_EVENT,
@@ -7,7 +8,7 @@ import {
   type PasteTerminalTextDetail
 } from '@/constants/terminal'
 import type { PaneManager } from '@/lib/pane-manager/pane-manager'
-import type { PtyTransport } from './pty-transport'
+import type { PtyTransport } from './pty-transport-types'
 import type { IDisposable } from '@xterm/xterm'
 import { handleFocusTerminalPaneDetail } from './focus-terminal-pane-event'
 import { surfaceStaleAgentRow } from './stale-agent-row'
@@ -29,7 +30,6 @@ import { activePaneIsCoveredByNativeChat } from './native-chat-covered-pane'
 
 type UseTerminalPaneGlobalEffectsArgs = {
   tabId: string
-  worktreeId: string
   cwd?: string
   isActive: boolean
   isVisible: boolean
@@ -52,9 +52,8 @@ function reportRendererPtyVisibility(
 ): void {
   for (const transport of paneTransports.values()) {
     const ptyId = transport.getPtyId()
-    if (!ptyId || ptyId.startsWith('remote:')) {
-      // Why: remote-runtime PTYs use a relay path outside main's local
-      // renderer-visibility registry, so reporting them here is misleading.
+    if (!ptyId || isRemoteRuntimePtyId(ptyId)) {
+      // Remote-runtime relay PTYs bypass main’s local visibility registry.
       continue
     }
     setRendererPtyVisibilityClaim(transport, ptyId, visible)
@@ -63,7 +62,6 @@ function reportRendererPtyVisibility(
 
 export function useTerminalPaneGlobalEffects({
   tabId,
-  worktreeId,
   isActive,
   isVisible,
   isChatViewMode = false,
@@ -78,24 +76,14 @@ export function useTerminalPaneGlobalEffects({
   isVisibleRef,
   toggleExpandPane
 }: UseTerminalPaneGlobalEffectsArgs): void {
-  const worktreeIdRef = useRef(worktreeId)
-  worktreeIdRef.current = worktreeId
-  // Starts true so the first render with isVisible=false triggers a
-  // suspendRendering(). Background worktrees that mount hidden would
-  // otherwise leak WebGL contexts — openTerminal() unconditionally creates
-  // one — and exhaust Chromium's ~8-context budget across worktrees.
+  // Start true so initially hidden panes suspend the WebGL context openTerminal creates instead of exhausting Chromium’s context budget.
   const wasVisibleRef = useRef(true)
   const wasWorktreeActiveRef = useRef(isWorktreeActive)
   const hasCompletedVisibleResumeRef = useRef(false)
   const renderingSuspendedByVisibilityRef = useRef(false)
   const hiddenReasonRef = useRef<TerminalHiddenReason | null>(null)
   const rendererVisible = isVisible && isWorktreeActive
-  // Why: the active pane can rebind to a new PTY (deferred reattach / eager
-  // adopt) or switch active leaf without isActive/isVisible/isWorktreeActive
-  // flipping. Derive the active leaf's live PTY reactively from the same
-  // leaf→PTY binding the reattach path writes, so the active-renderer-pty report
-  // below re-fires on rebind — otherwise main keeps the stale id and the live
-  // PTY loses its interactive reserve.
+  // Watch leaf → PTY rebinds even without activity/visibility changes so main grants the live PTY its interactive reserve.
   const activeLeafPtyId = useAppStore((state) => {
     const layout = state.terminalLayoutsByTabId[tabId]
     const activeLeafId = layout?.activeLeafId
@@ -156,8 +144,7 @@ export function useTerminalPaneGlobalEffects({
       resumeTerminalVisibility({
         manager,
         isActive,
-        // Why: chat mode is tab-wide, but only the chat leaf's xterm is covered;
-        // a split terminal leaf that is active must still regain focus on reveal.
+        // Tab-wide chat covers only its chat leaf; active split terminals still need reveal focus.
         isChatViewMode: isChatViewMode && activePaneIsCoveredByNativeChat(manager),
         wasVisible,
         shouldUseLightTabResume,
@@ -185,17 +172,25 @@ export function useTerminalPaneGlobalEffects({
 
     wasVisibleRef.current = false
     wasWorktreeActiveRef.current = isWorktreeActive
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, isChatViewMode, isWorktreeActive, rendererVisible])
+  }, [
+    isActive,
+    isChatViewMode,
+    isWorktreeActive,
+    rendererVisible,
+    applyPendingFollowOutputRequests,
+    captureViewportPositions,
+    isActiveRef,
+    isVisibleRef,
+    managerRef,
+    withSuppressedScrollTracking
+  ])
 
   useEffect(() => {
     const ptyId = isActive && isVisible && isWorktreeActive ? activeLeafPtyId : null
-    if (!ptyId || ptyId.startsWith('remote:')) {
+    if (!ptyId || isRemoteRuntimePtyId(ptyId)) {
       return
     }
-    // Why: main uses this as a scheduler hint only, so the foreground pane's
-    // renderer output gets first chance at the bounded ACK reserve. The cleanup
-    // reports the old PTY inactive before the effect re-runs for a rebind.
+    // Main prioritizes this PTY’s bounded ACK reserve; cleanup deactivates the old binding before rebind.
     window.api.pty.setActiveRendererPty?.(ptyId, true)
     return () => window.api.pty.setActiveRendererPty?.(ptyId, false)
   }, [isActive, isVisible, isWorktreeActive, activeLeafPtyId])
@@ -246,7 +241,6 @@ export function useTerminalPaneGlobalEffects({
       handleTerminalProgrammaticTextPaste({
         detail,
         tabId,
-        worktreeId: worktreeIdRef.current,
         getManager: () => managerRef.current,
         getPaneTransports: () => paneTransportsRef.current
       })
@@ -255,9 +249,7 @@ export function useTerminalPaneGlobalEffects({
     return () => window.removeEventListener(PASTE_TERMINAL_TEXT_EVENT, onPasteText)
   }, [tabId, managerRef, paneTransportsRef])
 
-  // Why: dictation events are dispatched globally; gate on isActiveRef so only
-  // the foreground terminal pane consumes the inserted text — otherwise text
-  // would be duplicated across all mounted but inactive tabs.
+  // Global dictation events must reach only the active pane or every mounted tab inserts the text.
   useEffect(() => {
     if (typeof document === 'undefined') {
       return
@@ -284,7 +276,6 @@ export function useTerminalPaneGlobalEffects({
           ...(typeof requestedPaneId === 'number' ? { paneId: requestedPaneId } : {})
         },
         tabId,
-        worktreeId: worktreeIdRef.current,
         getManager: () => managerRef.current,
         getPaneTransports: () => paneTransportsRef.current
       })

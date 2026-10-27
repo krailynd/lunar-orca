@@ -1,12 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   flushOrcadProfileStoreForShutdown,
   installOrcadShutdownSignals,
-  ORCAD_SHUTDOWN_DEADLINE_MS,
   startOrcadWithLifecycle
 } from './orcad-lifecycle'
+import { ORCAD_SHUTDOWN_DEADLINE_MS } from './orcad-stop-deadlines'
 
-/** Installs the real signal handlers with process.exit captured instead of exiting. */
 function captureShutdown() {
   vi.useFakeTimers()
   const signals = new Map<string, () => void>()
@@ -70,6 +71,23 @@ describe('orcad profile-state shutdown', () => {
       installOrcadShutdownSignals(async () => {})('idle', notFailed)
       await vi.waitFor(() => expect(exit).toHaveBeenLastCalledWith(0))
       expect(notFailed).not.toHaveBeenCalled()
+
+      installOrcadShutdownSignals(async () => {})('uncaught exception', undefined, 1)
+      await vi.waitFor(() => expect(exit).toHaveBeenLastCalledWith(1))
+
+      let finishStop = (): void => {}
+      const idleFailed = vi.fn()
+      const idle = installOrcadShutdownSignals(
+        () => new Promise<void>((resolve) => (finishStop = resolve))
+      )
+      expect(idle('idle', idleFailed)).toBe(true)
+      expect(idle('uncaught exception', undefined, 1)).toBe(false)
+      expect(idle('uncaught exception', undefined, 1)).toBe(false)
+      expect(idleFailed).toHaveBeenCalledOnce()
+      exit.mockClear()
+      finishStop()
+      await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(1))
+      expect(idleFailed).toHaveBeenCalledOnce()
     } finally {
       vi.restoreAllMocks()
     }
@@ -79,7 +97,6 @@ describe('orcad profile-state shutdown', () => {
     const { exitCodes, sigterm } = captureShutdown()
     const releaseAdmission = vi.fn()
     try {
-      // Writer initialization never acknowledges, so startup never returns a handle.
       const startup = startOrcadWithLifecycle(
         () => new Promise<object>(() => {}),
         async (runtimeCleanupSucceeded) => {
@@ -166,5 +183,15 @@ describe('orcad profile-state shutdown', () => {
 
     await expect(flushOrcadProfileStoreForShutdown(store)).rejects.toBe(flushError)
     expect(freezeWritesAsync).toHaveBeenCalledOnce()
+  })
+})
+
+describe('orcad runtime cleanup order', () => {
+  it('closes notification dismissals in a cleanup that runs after RPC stops', () => {
+    const entry = readFileSync(join(import.meta.dirname, 'orcad-entry.ts'), 'utf8')
+    const close = entry.indexOf('registerCleanup(() => runtime.closeNotificationDismissals())')
+    const rpcStop = entry.indexOf('registerCleanup(() => rpc.stop())')
+    expect(close).toBeGreaterThan(-1)
+    expect(close).toBeLessThan(rpcStop)
   })
 })

@@ -8,8 +8,8 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react'
-import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
-import { formatRelativeTime } from '../task-page-source-context'
+import type { TaskPageComposerActionsModel } from './use-task-page-composer-actions'
+import { formatRelativeTime } from './task-page-source-context'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {

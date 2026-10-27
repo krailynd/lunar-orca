@@ -1,9 +1,8 @@
 import { defineMethod } from '../core'
 import { remoteRpcContentBudget } from '../../../../shared/remote-rpc-content-budget'
-import { GitBranchDiff, GitCommitDiff, GitDiff } from './git-params'
+import { GitBranchDiff, GitCommitDiff, GitDiff } from '../../../../shared/rpc-contract/git-params'
 
-// Why: clientKind is set only for WebSocket-transported requests, so desktop-local and in-process
-// callers keep uncapped full-fidelity diffs.
+// Only WebSocket callers set clientKind; local/in-process diffs retain uncapped fidelity.
 function remoteDiffContentBudget(
   clientKind: 'mobile' | 'runtime' | undefined,
   requestId: string | undefined

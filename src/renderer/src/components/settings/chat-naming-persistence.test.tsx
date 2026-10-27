@@ -18,8 +18,9 @@ import {
   persist,
   settingsModel,
   type SettingsPersistenceModel
-} from './settings-persistence-test-fixture'
+} from './__fixtures__/settings-persistence-test-fixture'
 import { ActiveSettingsSectionProvider } from './SettingsSection'
+import { TooltipProvider } from '../ui/tooltip'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }))
 
@@ -30,13 +31,17 @@ function ChatPersistenceHarness({ model }: { model: SettingsPersistenceModel }) 
     throw new Error('Settings fixture is missing')
   }
   const context = {
-    model: { ...model, settings },
+    model: { ...model, settings, fontSuggestions: [] },
     interactions: controller,
     navigation: { getSectionSearchEntries: () => [getChatNamingSearchEntry()] },
     view: { isSectionMounted: () => true }
   } satisfies ChatSettingsRenderContext
   const section = renderChatSettingsSection(context)
-  return <ActiveSettingsSectionProvider value="chat">{section}</ActiveSettingsSectionProvider>
+  return (
+    <TooltipProvider>
+      <ActiveSettingsSectionProvider value="chat">{section}</ActiveSettingsSectionProvider>
+    </TooltipProvider>
+  )
 }
 
 it('passes the existing paired-web capability through the actual Chat renderer', () => {

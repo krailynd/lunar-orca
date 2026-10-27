@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -65,7 +65,7 @@ describe('workspaceMayOverrideDefaultModel', () => {
     const worktree = join(root, 'claude-repo')
     write(join(worktree, '.git'), 'gitdir: /elsewhere')
     expect(await mayOverride('claude', worktree)).toBe(false)
-    // The user's own `.claude` is account config, which the CLI's resolution already covers.
+    // Account-home config is already included in CLI resolution, even inside this workspace.
     write(join(worktree, '.claude', 'settings.json'), '{"model":"sonnet"}')
     expect(await mayOverride('claude', worktree, join(worktree, '.claude'))).toBe(false)
     expect(await mayOverride('claude', worktree)).toBe(true)
@@ -77,7 +77,6 @@ describe('workspaceMayOverrideDefaultModel', () => {
   it('ignores Claude project settings that pick no model or effort', async () => {
     const worktree = join(root, 'claude-permissions')
     write(join(worktree, '.git'), 'gitdir: /elsewhere')
-    // A committed permissions/hooks file, and the local file "always allow" writes.
     write(
       join(worktree, '.claude', 'settings.json'),
       JSON.stringify({ permissions: { allow: ['Bash(pnpm test)'] }, hooks: {}, env: { CI: '1' } })
@@ -131,20 +130,27 @@ describe('workspaceMayOverrideDefaultModel', () => {
   })
 
   it('never vouches for an agent whose project config it does not know', async () => {
-    expect(await mayOverride('pi', join(root, 'anywhere'))).toBe(true)
+    expect(await mayOverride('unknown-agent', join(root, 'anywhere'))).toBe(true)
   })
 
   it('ignores OpenCode project config that picks no model, effort or provider', async () => {
     const worktree = join(root, 'oc-plain')
     write(join(worktree, '.git'), 'gitdir: /elsewhere')
     expect(await mayOverride('opencode', worktree, null)).toBe(false)
-    // JSONC with comments, MCP servers, permissions and a subagent prompt.
     write(
       join(worktree, 'opencode.jsonc'),
       '{\n  // team MCP\n  "mcp": { "docs": { "type": "local" } },\n  "permission": { "edit": "ask" },\n  "agent": { "review": { "prompt": "be brief" } },\n}\n'
     )
     write(join(worktree, '.opencode', 'agent', 'review.md'), '---\ndescription: Reviews\n---\nBody')
     expect(await mayOverride('opencode', worktree, null)).toBe(false)
+  })
+
+  it('reads OpenCode 2 project config through the same layers as OpenCode', async () => {
+    const worktree = join(root, 'oc2-plain')
+    write(join(worktree, '.git'), 'gitdir: /elsewhere')
+    expect(await mayOverride('opencode2', worktree, null)).toBe(false)
+    write(join(worktree, 'opencode.json'), '{"model":"x/y"}')
+    expect(await mayOverride('opencode2', worktree, null)).toBe(true)
   })
 
   it.each([
@@ -205,4 +211,63 @@ describe('workspaceMayOverrideDefaultModel', () => {
     write(join(worktree, 'opencode.json'), '{"mcp":{}}')
     expect(await mayOverride('omp', worktree, join(root, 'omp-home'))).toBe(false)
   })
+
+  it.each([
+    ['.pi/settings.json', '{"defaultProvider":"openai","defaultModel":"gpt-6"}'],
+    ['.pi/settings.json', '{"defaultThinkingLevel":"low"}'],
+    ['.pi/settings.json', '{"modelThinkingLevels":{"openai/gpt-6":"high"}}'],
+    ['.pi/settings.json', '{"enabledModels":["openai/*"]}'],
+    ['.pi/settings.json', '{"extensions":["./tools/pick-model.ts"]}'],
+    ['.pi/settings.json', '{"packages":["npm:pi-model-router"]}'],
+    ['.pi/settings.json', '{"defaultModel":'],
+    ['.pi/extensions/pick-model.ts', 'export default () => {}\n']
+  ])(
+    'counts Pi project config in %s that may pick a model or thinking level',
+    async (file, text) => {
+      const worktree = join(root, 'pi-model')
+      write(join(worktree, '.git'), 'gitdir: /elsewhere')
+      write(join(worktree, file), text)
+      expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(true)
+    }
+  )
+
+  it('ignores Pi project settings that pick no model, and the account home’s own settings', async () => {
+    const worktree = join(root, 'pi-plain')
+    write(join(worktree, '.git'), 'gitdir: /elsewhere')
+    expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(false)
+    write(join(worktree, '.pi', 'settings.json'), '\uFEFF{"theme":"dark","defaultTools":["+grep"]}')
+    write(join(worktree, '.omp', 'settings.json'), '{"defaultModel":"gpt-6"}')
+    expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(false)
+    write(join(worktree, '.pi', 'settings.json'), '{"defaultModel":"gpt-6"}')
+    expect(await mayOverride('pi', worktree, join(worktree, '.pi'))).toBe(false)
+  })
+
+  it('ignores an empty Pi settings file and an extensions folder of only dotfiles', async () => {
+    const worktree = join(root, 'pi-empty')
+    write(join(worktree, '.git'), 'gitdir: /elsewhere')
+    write(join(worktree, '.pi', 'settings.json'), '')
+    write(join(worktree, '.pi', 'extensions', '.DS_Store'), 'x')
+    write(join(worktree, '.pi', 'extensions', '.gitkeep'))
+    expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(false)
+    write(join(worktree, '.pi', 'settings.json'), '\uFEFF  \n')
+    expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(false)
+  })
+
+  // Windows permission bits cannot make this fixture unreadable.
+  it.skipIf(process.platform === 'win32')(
+    'counts a Pi extensions folder it cannot read',
+    async () => {
+      const worktree = join(root, 'pi-locked')
+      write(join(worktree, '.git'), 'gitdir: /elsewhere')
+      const extensions = join(worktree, '.pi', 'extensions')
+      write(join(extensions, '.gitkeep'))
+      expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(false)
+      chmodSync(extensions, 0o000)
+      try {
+        expect(await mayOverride('pi', worktree, join(root, 'pi-home'))).toBe(true)
+      } finally {
+        chmodSync(extensions, 0o755)
+      }
+    }
+  )
 })

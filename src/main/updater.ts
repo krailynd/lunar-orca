@@ -14,7 +14,6 @@ import type { ReleaseBuildListOptions } from './updater-release-build-cache'
 import { UpdaterSetup, type UpdaterSetupOptions } from './updater/updater-setup'
 import type { PreQuitCleanupFailureMode, UpdateInstallMode } from './updater/updater-state'
 
-// Keep one service instance so all public API calls share updater state and event listeners.
 const updater = new UpdaterSetup()
 
 export type { PreQuitCleanupFailureMode, UpdateInstallMode, UpdaterSetupOptions }
@@ -93,7 +92,10 @@ export function dismissAvailableUpdate(): void {
   updater.dismissAvailableUpdate()
 }
 
-export function setupAutoUpdater(mainWindow: BrowserWindow, opts?: UpdaterSetupOptions): void {
+export function setupAutoUpdater(
+  mainWindow: BrowserWindow | null,
+  opts?: UpdaterSetupOptions
+): void {
   // Why: In Lunar Orca, disable automatic polling against upstream stablyai/orca
   // to prevent prompt loops that overwrite local custom features and native mods.
   if (process.env.ORCA_ENABLE_UPSTREAM_AUTO_UPDATE !== '1') {

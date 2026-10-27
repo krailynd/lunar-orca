@@ -1,5 +1,4 @@
-// Why: shared so main can name the paired runtime a mirrored PTY belongs to;
-// the encoding lives here rather than in the renderer transport that mints it.
+// Share encoding outside renderer transport so main can identify mirrored PTY runtime owners.
 const REMOTE_PTY_ID_PREFIX = 'remote:'
 const REMOTE_PTY_OWNER_SEPARATOR = '@@'
 
@@ -16,8 +15,13 @@ export function toRemoteRuntimePtyId(handle: string, environmentId?: string | nu
   return `${REMOTE_PTY_ID_PREFIX}${encodeURIComponent(owner)}${REMOTE_PTY_OWNER_SEPARATOR}${encodeURIComponent(handle)}`
 }
 
+// Why prefix-only: a `remote:` id that fails to parse still runs off this host, never locally.
+export function isRemoteRuntimePtyId(ptyId: string | null | undefined): boolean {
+  return typeof ptyId === 'string' && ptyId.startsWith(REMOTE_PTY_ID_PREFIX)
+}
+
 export function parseRemoteRuntimePtyId(ptyId: string): RemoteRuntimePtyIdParts | null {
-  if (!ptyId.startsWith(REMOTE_PTY_ID_PREFIX)) {
+  if (!isRemoteRuntimePtyId(ptyId)) {
     return null
   }
   const rest = ptyId.slice(REMOTE_PTY_ID_PREFIX.length)

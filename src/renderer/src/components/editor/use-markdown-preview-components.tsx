@@ -53,14 +53,11 @@ export function useMarkdownPreviewComponents({
     worktreeRoot,
     resolvedSourceRuntimeEnvironmentId,
     sourceOwner,
-    sourceConnectionId,
     worktreesByRepo,
     sourceWorktree,
     openFile,
     openMarkdownPreview,
-    setMarkdownViewMode,
-    pendingEditorRevealFrameIdsRef,
-    setPendingEditorReveal
+    setMarkdownViewMode
   } = foundation
   const { scrollToAnchor } = viewport
   const { getMarkdownCommentsForRange, handleAnnotatedMarkdownBlockClick } = reviewActions
@@ -73,7 +70,6 @@ export function useMarkdownPreviewComponents({
       isMac,
       sourceOwner,
       sourceRoutingWorktreeId,
-      sourceConnectionId,
       resolvedSourceRuntimeEnvironmentId,
       worktreeRoot,
       worktreesByRepo,
@@ -82,8 +78,6 @@ export function useMarkdownPreviewComponents({
       openFile,
       openMarkdownPreview,
       setMarkdownViewMode,
-      pendingEditorRevealFrameIdsRef,
-      setPendingEditorReveal,
       scrollToAnchor
     }
 
@@ -288,7 +282,6 @@ export function useMarkdownPreviewComponents({
           </h6>
         )
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the image override is a hook component; listed inputs preserve its identity.
   }, [
     filePath,
     activateMarkdownLink,
@@ -304,8 +297,6 @@ export function useMarkdownPreviewComponents({
     renderAnnotationControls,
     scrollToAnchor,
     setMarkdownViewMode,
-    setPendingEditorReveal,
-    sourceConnectionId,
     sourceOwner,
     sourceWorktree,
     resolvedSourceRuntimeEnvironmentId,

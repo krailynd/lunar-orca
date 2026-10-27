@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({ call: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/runtime/structured-agent-session-client', () => ({
+  subscribeStructuredAgentSessionStatus: vi.fn(async () => ({ unsubscribe: vi.fn() })),
   callStructuredAgentSession: mocks.call
 }))
 vi.mock('./native-chat-session-option-settings-write', () => ({
@@ -27,9 +28,7 @@ import { resetHostModelCatalogSnapshotsForTests } from '@/runtime/host-model-cat
 import type { StructuredAgentSessionMutate } from './use-structured-agent-session-mutate'
 import { useStructuredAgentSessionOptions } from './use-structured-agent-session-options'
 
-// The user's report: with no saved pick, every new Grok, OpenCode or OMP chat painted "Model" (or
-// the probe's model) before the model the chat runs. The first chat with no pick is the only one
-// that may: once it reports, the host names that model and the next chat starts from it.
+// Only the first chat without a saved pick may wait to name its model; later launches use the host’s learned default.
 
 const EFFORTS = [
   { value: 'low', label: 'Low' },
@@ -41,6 +40,11 @@ const CASES = {
   opencode: {
     ids: ['github-copilot/gpt-6', 'github-copilot/claude-fable-5'],
     runs: 'github-copilot/claude-fable-5',
+    holdsEverywhere: false
+  },
+  pi: {
+    ids: ['anthropic/claude-sonnet-4', 'openai/gpt-6'],
+    runs: 'openai/gpt-6',
     holdsEverywhere: false
   }
 } as const
@@ -82,8 +86,7 @@ function pill(snapshot: readonly SessionOptionDescriptor[]): Pill {
 const LOCAL = { kind: 'local' } as const
 const NOT_STARTED: { running: { fence: number } | null } = { running: null }
 const NO_HELD = {}
-// oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: no pick is made, so mutate is never called.
-const NO_MUTATE = vi.fn() as unknown as StructuredAgentSessionMutate
+const NO_MUTATE: StructuredAgentSessionMutate = vi.fn()
 
 function renderChat(agent: string, sessionId: string, worktree: string) {
   const frames: Pill[] = []
@@ -112,8 +115,7 @@ function renderChat(agent: string, sessionId: string, worktree: string) {
   return { frames, ...view }
 }
 
-/** A first chat that named no model: the pane reads the host before the chat starts, then the
- *  chat starts and its options are read. */
+/** Read the unconfigured chat before start, then read its live options after start. */
 async function firstChatRuns(agent: keyof typeof CASES, worktree: string) {
   const first = renderChat(agent, `${agent}-1`, worktree)
   await waitFor(() =>
@@ -124,7 +126,6 @@ async function firstChatRuns(agent: keyof typeof CASES, worktree: string) {
     )
   )
   await new Promise((resolve) => setTimeout(resolve, 0))
-  // Nothing was known: the first chat names its model only once it reports.
   expect(first.frames.every((frame) => frame.model === null)).toBe(true)
   first.rerender({ running: { fence: 1 } })
   await waitFor(() =>
@@ -142,15 +143,13 @@ describe('a second new chat after one that named no model', () => {
 
   function hostFor(agent: keyof typeof CASES): void {
     const entry = CASES[agent]
-    // Per test: a late read from an earlier test's chat must not teach this host anything.
     let reported = false
     mocks.call.mockImplementation(async (_target: unknown, method: string) => {
       if (method === 'agentSession.modelCatalog') {
         return hostAnswer(entry, reported)
       }
       if (method === 'agentSession.options') {
-        // The host learns the configured default as this read answers, after any catalog read
-        // sent alongside it.
+        // Teach the configured default only after concurrent catalog reads have answered.
         await new Promise((resolve) => setTimeout(resolve, 5))
         reported = true
         const answer: AgentSessionOptionsResult = {
@@ -163,7 +162,7 @@ describe('a second new chat after one that named no model', () => {
     })
   }
 
-  it.each(['grok', 'opencode'] as const)(
+  it.each(['grok', 'opencode', 'pi'] as const)(
     '%s: names the model the first chat ran on its first frame',
     async (agent) => {
       hostFor(agent)

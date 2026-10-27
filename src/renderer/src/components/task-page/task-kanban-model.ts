@@ -1,4 +1,4 @@
-import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
+import type { TaskPageComposerActionsModel } from './use-task-page-composer-actions'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { LinkedWorkItemSummary } from '@/lib/new-workspace'
 import { findGithubWorkItemWorkspaceAttachment } from '@/lib/github-work-item-workspace-attachment'
@@ -11,7 +11,7 @@ import {
   getGitLabWorkItemWorkspaceSeed,
   getJiraIssueWorkspaceSeed,
   getTaskPageRepoSourceContext
-} from '../task-page-source-context'
+} from './task-page-source-context'
 import { useAppStore } from '@/store'
 import {
   buildLunarOrcaMultiAgentDispatchPrompt,

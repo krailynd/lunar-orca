@@ -1,3 +1,4 @@
+import { forgeOwnerHostIdForWorkspace } from '@/runtime/forge-credential-target'
 import React, { useCallback } from 'react'
 import { toast } from 'sonner'
 import { refreshHostedReviewCard } from '@/store/slices/hosted-review-card-refresh'
@@ -25,6 +26,7 @@ function hasGitHubCheckHandle(check: PRCheckDetail): boolean {
 export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndReviewActionsInput) {
   const {
     activeReview,
+    activeWorktree,
     activeWorktreeId,
     asyncResultKeyRef,
     branch,
@@ -46,7 +48,6 @@ export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndRe
     pr,
     prCacheKey,
     repo,
-    settings,
     setChecks,
     setChecksLoading,
     setComments,
@@ -89,13 +90,12 @@ export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndRe
             return
           }
           try {
-            // Why: GitLab job logs are now loadable, so the fix prompt gets the same
-            // failure context the sidebar shows instead of check names alone.
+            // Give GitLab fix prompts the same failure logs as the sidebar, not just check names.
             const details = isGitLabJob
               ? await loadGitLabJobLogDetails({
                   repoPath: repo.path,
                   repoId: repo.id,
-                  settings,
+                  repoOwnerExecutionHostId: forgeOwnerHostIdForWorkspace(repo, activeWorktree),
                   check,
                   projectRef: gitLabProjectRefRef.current
                 })
@@ -113,8 +113,8 @@ export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndRe
             if (details) {
               checkRunDetailsByCheckKey[getCheckDetailsPromptKey(check, index)] = details
             }
-          } catch (error) {
-            console.warn('[ChecksPanel] failed to load check details for AI fix prompt', error)
+          } catch {
+            console.warn('[ChecksPanel] failed to load check details for AI fix prompt')
           }
         })
       )
@@ -156,7 +156,7 @@ export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndRe
     isFixingChecksWithAI,
     pr?.prRepo,
     repo,
-    settings,
+    activeWorktree,
     sourceControlAiActionsVisible,
     stateRequestKey,
     setIsFixingChecksWithAI,
@@ -317,11 +317,10 @@ export function useChecksPanelCheckAndReviewActions(model: ChecksPanelCheckAndRe
     ]
   )
 
-  // Open hosted review in browser
   const handleOpenPR = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (activeReview?.url) {
-        // Why: route through openHttpLink so PR/MR links honor the "open links in app" setting; Shift+Cmd/Ctrl is the escape hatch.
+        // Use shared link routing for in-app settings and the Shift+Cmd/Ctrl escape hatch.
         openChecksPanelHostedReviewUrl({
           url: activeReview.url,
           event: event.nativeEvent,

@@ -1,10 +1,7 @@
 import { readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Why: written by the watchdog worker when main-thread heartbeats stop, and rewritten if
-// they resume; consumed on the next launch to report how long the stall lasted and whether it ever
-// cleared. `selfRecovered` separates a real deadlock from a long-but-survivable stall — the two are
-// indistinguishable at detection time, and only the latter would have been a destructive kill.
+// The next launch consumes detection/resolution markers; selfRecovered distinguishes cleared stalls from unresolved hangs.
 export type HangDetectionMarker = {
   detectedAt: number
   parentPid: number
@@ -18,10 +15,6 @@ export function hangDetectionMarkerPath(userDataPath: string): string {
 
 export function writeHangDetectionMarker(markerPath: string, marker: HangDetectionMarker): void {
   writeFileSync(markerPath, JSON.stringify(marker), { mode: 0o600 })
-}
-
-export function readHangDetectionMarker(markerPath: string): HangDetectionMarker | null {
-  return readAvailableHangDetectionMarker(markerPath) ?? null
 }
 
 function readAvailableHangDetectionMarker(
@@ -59,7 +52,7 @@ function readAvailableHangDetectionMarker(
       detectedAt: parsed.detectedAt,
       parentPid: parsed.parentPid,
       unresponsiveMs: parsed.unresponsiveMs,
-      // Why: a marker left by the detect leg and never rewritten means the stall never cleared.
+      // Missing recovery evidence leaves the stall unresolved.
       selfRecovered: 'selfRecovered' in parsed && parsed.selfRecovered === true
     }
   } catch {

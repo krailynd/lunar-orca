@@ -25,7 +25,6 @@ import {
   closeClaudePublishedSessionForDeps
 } from './claude-structured-session-close'
 
-/** The launch with the chat's saved options in its spawn options. */
 export type ClaudeAcquisitionLaunch = ClaudeStructuredLaunch & {
   savedOptions: Omit<ClaudeStructuredSpawnOptions, 'sdkOptions'>
 }
@@ -68,13 +67,12 @@ export async function resolveClaudeAcquisitionLaunch(args: {
           retainedExit.connection,
           retainedExit.error
         )
-        // A proven root exit is what released the lease, so it cannot also refuse the next root;
-        // only an exit this host cannot vouch for still blocks the start.
+        // A proven root exit releases the lease even when descendant cleanup remains unverified.
         if (cleanupError instanceof AgentSessionAcquisitionExitUnprovenError) {
           throw cleanupError
         }
       }
-      // The superseded child must settle before its durable resume identity is reused.
+      // Settle the old child before reusing its durable resume identity.
       await callbacks.settleExit(sessionId, retainedExit)
       resumeSession ??= retainedExit.session
     }
@@ -89,7 +87,11 @@ export async function resolveClaudeAcquisitionLaunch(args: {
         }
       : input.identity
     const launch = await deps
-      .resolveLaunch({ identity: launchIdentity })
+      .resolveLaunch({
+        identity: launchIdentity,
+        spawnToken: input.spawnToken,
+        ...(input.permissionMode ? { permissionMode: input.permissionMode } : {})
+      })
       .catch((error: unknown) => {
         throw error instanceof AgentSessionPreSpawnError
           ? error
@@ -102,7 +104,6 @@ export async function resolveClaudeAcquisitionLaunch(args: {
       options: spawn.sdkOptions,
       savedOptions: {
         options: spawn.options,
-        skipped: spawn.skipped,
         fastModeAtStart: spawn.fastModeAtStart
       }
     }

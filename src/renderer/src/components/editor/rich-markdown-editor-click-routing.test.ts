@@ -11,8 +11,17 @@ import {
 } from '@/lib/http-link-routing'
 import { createRichMarkdownHtmlSuperscriptLinkContext } from './rich-markdown-html-superscript-link-context'
 
-const routing = vi.hoisted(() => ({
+type RoutingState = {
+  settings: { activeRuntimeEnvironmentId?: string } & Record<string, unknown>
+  worktreesByRepo: Record<
+    string,
+    { id: string; repoId: string; hostId: 'local' | `runtime:${string}` }[]
+  >
+  canOpenOwnedBrowser: boolean
+}
+const routing = vi.hoisted((): RoutingState => ({
   settings: { openLinksInApp: false, openLinksInAppModifierInverts: false },
+  worktreesByRepo: {},
   canOpenOwnedBrowser: true
 }))
 vi.mock('@/store', () => ({ useAppStore: { getState: () => routing } }))
@@ -24,17 +33,25 @@ vi.mock('@/lib/workspace-browser-tab-open', () => ({
 const openUrl = vi.fn()
 const openFileUri = vi.fn()
 const createBrowserTab = vi.fn()
-const openOwnedBrowser = vi.fn(async () => {})
+const openOwnedBrowser = vi.fn(async (): Promise<string | null> => null)
 const activateMarkdownLink = vi.fn()
 let editor: Editor | null = null
 
 beforeEach(() => {
   vi.clearAllMocks()
-  routing.settings = { openLinksInApp: false, openLinksInAppModifierInverts: false }
+  routing.settings = {
+    openLinksInApp: false,
+    openLinksInAppModifierInverts: false
+  }
+  routing.worktreesByRepo = {
+    repo: [{ id: 'wt-1', repoId: 'repo', hostId: 'local' }]
+  }
   routing.canOpenOwnedBrowser = true
   Object.defineProperty(window, 'api', {
     configurable: true,
-    value: { shell: { openUrl, openFileUri, pathExists: vi.fn(async () => true) } }
+    value: {
+      shell: { openUrl, openFileUri, pathExists: vi.fn(async () => true) }
+    }
   })
   registerHttpLinkStoreAccessor(() => ({
     settings: routing.settings,
@@ -88,7 +105,6 @@ function clickLink({
     pos: 2,
     rootRef: { current: null },
     scrollRichMarkdownReviewNoteCardIntoView: vi.fn(),
-    settings: {},
     view: editor.view,
     worktreeId: 'wt-1',
     worktreeRoot: '/repo'
@@ -98,8 +114,11 @@ function clickLink({
 describe('rich Markdown alternate browser click', () => {
   it.each([true, false])('opens Orca when the system browser is primary (Mac: %s)', (isMac) => {
     expect(clickLink({ isMac })).toBe(true)
-    expect(createBrowserTab).toHaveBeenCalledWith('wt-1', 'https://example.com/docs', {
-      activate: true
+    expect(openOwnedBrowser).toHaveBeenCalledWith({
+      workspaceId: 'wt-1',
+      url: 'https://example.com/docs',
+      intent: { kind: 'url' },
+      linkContext: { linkIntent: null, canReveal: expect.any(Function) }
     })
     expect(openUrl).not.toHaveBeenCalled()
     expect(activateMarkdownLink).not.toHaveBeenCalled()
@@ -108,7 +127,10 @@ describe('rich Markdown alternate browser click', () => {
   it.each([true, false])(
     'opens the system browser when Orca is primary (invert: %s)',
     (inverts) => {
-      routing.settings = { openLinksInApp: true, openLinksInAppModifierInverts: inverts }
+      routing.settings = {
+        openLinksInApp: true,
+        openLinksInAppModifierInverts: inverts
+      }
       expect(clickLink()).toBe(true)
       expect(openUrl).toHaveBeenCalledWith('https://example.com/docs')
       expect(createBrowserTab).not.toHaveBeenCalled()
@@ -124,6 +146,7 @@ describe('rich Markdown alternate browser click', () => {
       workspaceId: 'wt-1',
       url: 'https://example.com/docs',
       intent: { kind: 'url' },
+      linkContext: { linkIntent: null, canReveal: expect.any(Function) },
       ...(sourceOwner.kind === 'ssh'
         ? { expectedSshConnectionId: sourceOwner.connectionId }
         : sourceOwner.kind === 'runtime'
@@ -152,7 +175,10 @@ describe('rich Markdown alternate browser click', () => {
     expect(clickLink({ shiftKey: false })).toBe(true)
     expect(activateMarkdownLink).toHaveBeenCalledWith(
       'https://example.com/docs',
-      expect.objectContaining({ worktreeId: 'wt-1', sourceOwner: { kind: 'local' } })
+      expect.objectContaining({
+        worktreeId: 'wt-1',
+        sourceOwner: { kind: 'local' }
+      })
     )
     expect(createBrowserTab).not.toHaveBeenCalled()
   })
@@ -166,8 +192,30 @@ describe('rich Markdown alternate browser click', () => {
 
   it('keeps Shift-modified relative files on the client OS path', async () => {
     expect(clickLink({ href: 'child.md' })).toBe(true)
-    await vi.waitFor(() => expect(openFileUri).toHaveBeenCalledWith('file:///repo/docs/child.md'))
+    await vi.waitFor(() =>
+      expect(openFileUri).toHaveBeenCalledWith('file:///repo/docs/child.md', 'local')
+    )
     expect(activateMarkdownLink).not.toHaveBeenCalled()
     expect(createBrowserTab).not.toHaveBeenCalled()
+  })
+
+  it('opens a local document through the client OS while a server is focused', async () => {
+    routing.settings = {
+      ...routing.settings,
+      activeRuntimeEnvironmentId: 'env-1'
+    }
+    expect(clickLink({ href: 'child.md' })).toBe(true)
+    await vi.waitFor(() =>
+      expect(openFileUri).toHaveBeenCalledWith('file:///repo/docs/child.md', 'local')
+    )
+  })
+
+  it('refuses a runtime-owned document even when the path exists locally', async () => {
+    routing.worktreesByRepo = {
+      repo: [{ id: 'wt-1', repoId: 'repo', hostId: 'runtime:env-1' }]
+    }
+    expect(clickLink({ href: 'child.md' })).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(openFileUri).not.toHaveBeenCalled()
   })
 })

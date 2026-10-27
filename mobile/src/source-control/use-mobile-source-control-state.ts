@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useHostClient, useForceReconnect } from '../transport/client-context'
+import { useForceReconnect } from '../transport/host-client-hooks'
+import { useWorkspaceClient } from '../transport/use-workspace-client'
 import { getWorktreeLabel } from '../session/worktree-label'
 import { useMobileGitRequests } from './use-mobile-git-requests'
 import { useMobileSourceControlLoaders } from './use-mobile-source-control-loaders'
@@ -32,8 +33,6 @@ import {
   type MobileBranchEntryView
 } from './mobile-source-control-screen-state'
 
-type MobileGitLocalBranches = RuntimeGitLocalBranches
-
 export type MobileSourceControlStateParams = {
   hostId: string
   worktreeId: string
@@ -43,8 +42,6 @@ export type MobileSourceControlStateParams = {
   onRequestClose?: () => void
   onFileOpenStart?: () => void
   onOpenedFileDiff?: (relativePath: string) => void
-  // When the panel runs inside the hub, "History" switches the segment instead of
-  // pushing the standalone route. Absent for the standalone/dock usage.
   onOpenHistory?: () => void
 }
 
@@ -61,13 +58,13 @@ export function useMobileSourceControlState(params: MobileSourceControlStatePara
     onOpenHistory
   } = params
   const insets = useSafeAreaInsets()
-  const { client, state: connState } = useHostClient(hostId)
+  const { client, state: connState } = useWorkspaceClient(hostId)
   const forceReconnect = useForceReconnect()
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [commitMessage, setCommitMessage] = useState('')
   const [generatingMessage, setGeneratingMessage] = useState(false)
   const [showBranchPicker, setShowBranchPicker] = useState(false)
-  const [localBranches, setLocalBranches] = useState<MobileGitLocalBranches | null>(null)
+  const [localBranches, setLocalBranches] = useState<RuntimeGitLocalBranches | null>(null)
   const [createdPrUrl, setCreatedPrUrl] = useState<string | null>(null)
   const [createdPrWarning, setCreatedPrWarning] = useState<string | null>(null)
   const [discardTarget, setDiscardTarget] = useState<MobileGitStatusEntry | null>(null)
@@ -141,7 +138,6 @@ export function useMobileSourceControlState(params: MobileSourceControlStatePara
       })),
     [branchCompareCanOpen, branchCompareSection]
   )
-  // Local changes only: dirty files + committed file diffs vs base (not PR/push).
   const shouldShowBranchCompareSection =
     branchEntries.length > 0 ||
     branchCompareState.kind === 'loading' ||
@@ -262,7 +258,6 @@ export function useMobileSourceControlState(params: MobileSourceControlStatePara
     router,
     setRootRef,
     worktreeLabel,
-    // screen state
     screenState,
     branchCompareState,
     branchDiffPreview,
@@ -288,7 +283,6 @@ export function useMobileSourceControlState(params: MobileSourceControlStatePara
     keyboardLift,
     openingPath,
     openingBranchPath,
-    // derived
     status,
     sections,
     branchCompareResult,
@@ -306,7 +300,6 @@ export function useMobileSourceControlState(params: MobileSourceControlStatePara
     syncLabel,
     primaryAction,
     createPrAction,
-    // actions
     loadStatus,
     openFile,
     openBranchDiff,

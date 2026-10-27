@@ -20,7 +20,7 @@ import {
   GitSubmoduleStatus,
   GitTargetedRemote,
   WorktreeSelector
-} from './git-params'
+} from '../../../../shared/rpc-contract/git-params'
 
 export const GIT_METHODS = [
   defineMethod({
@@ -88,6 +88,12 @@ export const GIT_METHODS = [
     permission: 'workspace',
     params: WorktreeSelector,
     handler: async (params, { runtime }) => runtime.getRuntimeGitConflictOperation(params.worktree)
+  }),
+  defineMethod({
+    name: 'git.mutationInFlight',
+    permission: 'workspace',
+    params: WorktreeSelector,
+    handler: async (params, { runtime }) => runtime.getRuntimeGitMutationInFlight(params.worktree)
   }),
   defineMethod({
     name: 'git.abortMerge',

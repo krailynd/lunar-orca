@@ -1,4 +1,4 @@
-import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
+import type { TaskPageComposerActionsModel } from './use-task-page-composer-actions'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { useAppStore } from '@/store'
 import { buildOrcaTaskTraceabilityIndicators } from '../../../../shared/orca-task-traceability'

@@ -1,15 +1,14 @@
 import { afterEach, beforeEach, vi } from 'vitest'
-import { awaitRuntimeFileWatcherUnsubscribes, RuntimeFileCommands } from './orca-runtime-files'
-import { resetSshConnectionGenerations } from '../ssh/ssh-connection-generation'
+import { awaitRuntimeFileWatcherUnsubscribes } from './files/watch/file-watcher-leases'
+import { RuntimeFileCommands } from './orca-runtime-files'
+import { resetSshConnectionGenerations } from '../ssh/connection/ssh-connection-generation'
 import { resetRuntimeFileMocks } from './orca-runtime-files-mock-registry'
 import {
-  LOCAL_EXECUTION_HOST_ID,
+  getConnectionExecutionHostId,
   normalizeExecutionHostId,
-  toSshExecutionHostId,
   type ExecutionHostId
 } from '../../shared/execution-host'
 
-/** Restores the shared fs/auth/watcher mock state and fake timers around each test. */
 export function useRuntimeFileCommandsLifecycle(): void {
   const originalPlatform = process.platform
 
@@ -58,13 +57,10 @@ export function createRuntimeFileCommands(options?: {
     path,
     ...(options?.hostId ? { hostId: options.hostId } : {})
   }
-  // Mirrors the real resolver: the worktree's own host outranks the repo row.
+  // Worktree host outranks repo metadata, matching the real resolver.
   const runtimeFileTargetExecutionHostId = (): ExecutionHostId => {
     const connectionId = store.getRepo(worktree.repoId)?.connectionId
-    return (
-      normalizeExecutionHostId(options?.hostId) ??
-      (connectionId ? toSshExecutionHostId(connectionId) : LOCAL_EXECUTION_HOST_ID)
-    )
+    return normalizeExecutionHostId(options?.hostId) ?? getConnectionExecutionHostId(connectionId)
   }
   const commands = new RuntimeFileCommands({
     getRuntimeId: () => 'runtime-1',

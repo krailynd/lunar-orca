@@ -1,7 +1,9 @@
 import { translate } from '@/i18n/i18n'
 import { AppearanceChatSection } from './AppearanceChatSection'
+import { ChatBehaviorSetting } from './ChatBehaviorSetting'
 import { ChatNamingSetting } from './ChatNamingSetting'
 import { NativeChatInlineVisualsSetting } from './NativeChatInlineVisualsSetting'
+import { NativeChatProvidersSetting } from './NativeChatProvidersSetting'
 import { SettingsSection } from './SettingsSection'
 import { SettingsSubsectionHeader } from './SettingsFormControls'
 import { matchesSettingsSearch } from './settings-search'
@@ -11,10 +13,13 @@ import type { SettingsSearchEntry } from './settings-search'
 import { useAppStore } from '../../store'
 import { Card, CardContent } from '../ui/card'
 import { getChatAppearanceSearchEntries } from './chat-appearance-search'
+import { getChatBehaviorTitle } from './chat-behavior-search'
 
 export function ChatSettingsSection({
   settings,
   updateSettings,
+  fontSuggestions,
+  onRequestFontSuggestions,
   writeSourceControlAiSettings,
   onChatPromptDirtyChange,
   chatPromptDiscardSignal,
@@ -24,7 +29,9 @@ export function ChatSettingsSection({
   isMounted
 }: {
   settings: GlobalSettings
-  updateSettings: (updates: Partial<GlobalSettings>) => void
+  updateSettings: (updates: Partial<GlobalSettings>) => void | Promise<void>
+  fontSuggestions?: string[]
+  onRequestFontSuggestions?: () => void
   writeSourceControlAiSettings: (patch: SourceControlAiSettingsPatch) => Promise<void>
   onChatPromptDirtyChange?: (dirty: boolean) => void
   chatPromptDiscardSignal?: number
@@ -39,6 +46,10 @@ export function ChatSettingsSection({
   }
   const title = translate('settings.appearance.chat.title', 'Chat')
   const appearanceTitle = translate('auto.components.settings.Settings.2b4474780a', 'Appearance')
+  const showAllBehavior = matchesSettingsSearch(query, [
+    { title },
+    { title: getChatBehaviorTitle() }
+  ])
   return (
     <SettingsSection
       id="chat"
@@ -58,6 +69,8 @@ export function ChatSettingsSection({
                   <AppearanceChatSection
                     settings={settings}
                     updateSettings={updateSettings}
+                    fontSuggestions={fontSuggestions}
+                    onRequestFontSuggestions={onRequestFontSuggestions}
                     forceVisiblePrimary={matchesSettingsSearch(query, [
                       { title },
                       { title: appearanceTitle }
@@ -68,12 +81,24 @@ export function ChatSettingsSection({
             </section>
           ) : null}
           {showDesktopOnlySettings ? (
+            <NativeChatProvidersSetting
+              settings={settings}
+              updateSettings={updateSettings}
+              forceVisible={matchesSettingsSearch(query, [{ title }])}
+            />
+          ) : null}
+          {showDesktopOnlySettings ? (
             <NativeChatInlineVisualsSetting
               settings={settings}
               updateSettings={updateSettings}
               forceVisible={matchesSettingsSearch(query, [{ title }])}
             />
           ) : null}
+          <ChatBehaviorSetting
+            settings={settings}
+            updateSettings={updateSettings}
+            forceVisible={showAllBehavior}
+          />
           {showDesktopOnlySettings ? (
             <ChatNamingSetting
               key={chatPromptDiscardSignal}

@@ -1,3 +1,4 @@
+import { createClaudeStructuredLaunchResolver } from '../runtime/structured-agent-launch-composition.test-support'
 import { chmodSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
@@ -5,20 +6,13 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../shared/constants'
-import { AgentSessionPreSpawnError } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
-import { claudeStructuredAuthPolicyForSettings } from '../claude-accounts/claude-structured-auth-policy'
-import type { ClaudeManagedAccountGateSettings } from '../native-chat/claude-structured-managed-account-support'
 import {
   CLAUDE_DEFAULT_SETTING_SOURCES,
   CLAUDE_SESSION_STATE_EVENTS_ENV,
   CLAUDE_STRUCTURED_BASE_OPTIONS,
-  claudeSessionIdForOrcaSession,
-  createClaudeStructuredLaunchResolver,
-  type ClaudeStructuredLaunchResolverDeps
+  claudeSessionIdForOrcaSession
 } from './claude-structured-launch-resolution'
-import { claudeStructuredPermissionModeForSettings } from './claude-structured-permission-mode'
 import { CLAUDE_THINKING_DISPLAY_FLAG, type ClaudeCliFlag } from './claude-cli-flag-support'
-import { beginClaudeAuthSwitch, endClaudeAuthSwitch } from '../claude-accounts/live-pty-gate'
 import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
 
 const SESSION_ID = 'orca-session-1'
@@ -60,9 +54,7 @@ function makeExecutable(path: string): void {
 function resolverFor(
   value: AgentSessionRecord | null,
   resolveEnv?: () => Record<string, string>,
-  stripAuthEnv = false,
-  // Manual by default so a test that is not about permissions is not silently about them.
-  agentDefaultArgs: Record<string, string> = { claude: '' },
+  account: 'managed' | 'system' = 'system',
   hasTranscript: () => Promise<boolean> = async () => true,
   resolveLaunchArgs?: () => string[],
   attachmentDirectory?: string
@@ -71,40 +63,12 @@ function resolverFor(
     store: { getRecord: () => value, pinLaunchDirectory: vi.fn() },
     resolveWorkspacePath: async (id) => `/repos/${id}`,
     resolveCommand: () => '/usr/local/bin/claude',
-    resolveAuthPolicy: () => ({ stripAuthEnv }),
-    resolvePermissionMode: () => claudeStructuredPermissionModeForSettings({ agentDefaultArgs }),
+    resolveAuthPolicy: () => ({ account }),
     hasTranscript,
     resolveLaunchArgs: resolveLaunchArgs ?? (() => value?.launchArgs ?? []),
     ...(resolveEnv ? { resolveEnv } : {}),
     ...(attachmentDirectory ? { attachmentDirectory } : {})
   })
-}
-
-function managedAccount(id: string, managedAuthRuntime: 'host' | 'wsl') {
-  return {
-    id,
-    email: `${id}@example.com`,
-    managedAuthPath: `/managed/${id}`,
-    managedAuthRuntime,
-    authMethod: 'subscription-oauth' as const,
-    createdAt: 0,
-    updatedAt: 0,
-    lastAuthenticatedAt: 0
-  }
-}
-
-const HOST_SELECTED: ClaudeManagedAccountGateSettings = {
-  claudeManagedAccounts: [managedAccount('host-1', 'host')],
-  activeClaudeManagedAccountId: 'host-1',
-  activeClaudeManagedAccountIdsByRuntime: { host: 'host-1', wsl: {} }
-}
-
-/** The normalized steady state of a Windows user whose only Claude account is WSL-managed: the
- *  prune drops the WSL account out of the host slot and persists that. */
-const WSL_ONLY_NORMALIZED: ClaudeManagedAccountGateSettings = {
-  claudeManagedAccounts: [managedAccount('wsl-1', 'wsl')],
-  activeClaudeManagedAccountId: null,
-  activeClaudeManagedAccountIdsByRuntime: { host: null, wsl: { Ubuntu: 'wsl-1' } }
 }
 
 const RESUMABLE = record({
@@ -124,7 +88,6 @@ describe('claude structured launch resolution', () => {
 
     const launch = await resolverFor(floating)({ identity: IDENTITY })
 
-    // resolverFor answers `/repos/<id>` — the current setting — which a pinned resume must ignore.
     expect(launch.cwd).toBe(pinned)
   })
 
@@ -148,6 +111,7 @@ describe('claude structured launch resolution', () => {
       supportedDialogKinds: [],
       extraArgs: { 'replay-user-messages': null },
       systemPrompt: { type: 'preset', preset: 'claude_code' },
+      permissionMode: 'default',
       sessionId: first.providerSessionId
     })
     expect(first.options.resume).toBeUndefined()
@@ -167,8 +131,7 @@ describe('claude structured launch resolution', () => {
       const launch = await resolverFor(
         value,
         undefined,
-        false,
-        undefined,
+        'system',
         hasTranscript
       )({ identity: identityAt('old-leaf') })
       const expected = claudeSessionIdForOrcaSession(SESSION_ID, boundary.operationId)
@@ -184,16 +147,14 @@ describe('claude structured launch resolution', () => {
       const retry = await resolverFor(
         value,
         undefined,
-        false,
-        undefined,
+        'system',
         hasTranscript
       )({ identity: IDENTITY })
       expect(retry.providerSessionId).toBe(expected)
       const next = await resolverFor(
         { ...value, providerContextBoundary: { ...boundary, operationId: 'clear-two' } },
         undefined,
-        false,
-        undefined,
+        'system',
         async () => false
       )({ identity: IDENTITY })
       expect(next.providerSessionId).not.toBe(expected)
@@ -226,7 +187,6 @@ describe('claude structured launch resolution', () => {
   })
 
   it('names the child by the Orca session id, over any id the configured overlay carries', async () => {
-    // The Orca-minted id, never the provider's: the provider id rotates on /clear.
     const launch = await resolverFor(record(), () => ({
       ORCA_AGENT_SESSION_ID: 'a0b1c2d3-0000-4000-8000-00000000abcd'
     }))({ identity: IDENTITY })
@@ -291,8 +251,7 @@ describe('claude structured launch resolution', () => {
         ] as AgentSessionRecord['providerHandleChain']
       }),
       undefined,
-      false,
-      { claude: '' },
+      'system',
       hasTranscript
     )({ identity: identityAt(null) })
 
@@ -306,19 +265,15 @@ describe('claude structured launch resolution', () => {
       providerSessionId: 'provider-current',
       resumeLeafUuid: null,
       resumesTranscript: false,
-      // Launching the id fresh does not start a new conversation: the child continues the chain.
       continuesChain: true
     })
   })
 
-  // Agent Permissions is stored as the bypass flag inside the launch arguments, so presence of
-  // that flag — not the whole string — is what Yolo means, exactly as a terminal launch reads it.
-  it.each([
-    ['--dangerously-skip-permissions'],
-    ['--dangerously-skip-permissions --model Opus'],
-    ['--model Opus --dangerously-skip-permissions']
-  ])('starts a Yolo session in bypassPermissions for args %s', async (claude) => {
-    const launch = await resolverFor(record(), undefined, false, { claude })({ identity: IDENTITY })
+  it('starts a Full access chat with the bypass flag and no permission mode', async () => {
+    const launch = await resolverFor(record())({
+      identity: IDENTITY,
+      permissionMode: 'full-access'
+    })
 
     expect(launch.options.extraArgs).toEqual({
       'replay-user-messages': null,
@@ -328,31 +283,29 @@ describe('claude structured launch resolution', () => {
     expect(launch.options.allowDangerouslySkipPermissions).toBeUndefined()
   })
 
-  // The common profile: the toggle has never been used, so it has written nothing, and the
-  // default for the key it did not write is the bypass flag — the posture the terminal has
-  // always given these users.
-  it('starts a session that never opened Agent settings in bypassPermissions', async () => {
-    const launch = await resolverFor(record(), undefined, false, {})({ identity: IDENTITY })
+  it.each([
+    ['ask', 'default'],
+    ['accept-edits', 'acceptEdits'],
+    ['auto', 'auto']
+  ] as const)('starts a %s chat in permission mode %s', async (permissionMode, expected) => {
+    const launch = await resolverFor(record())({ identity: IDENTITY, permissionMode })
 
-    expect(launch.options.extraArgs).toEqual({
-      'replay-user-messages': null,
-      'dangerously-skip-permissions': null
-    })
+    expect(launch.options.permissionMode).toBe(expected)
+    expect(launch.options.extraArgs).toEqual({ 'replay-user-messages': null })
   })
 
-  // Manual is stored as an empty string, which owns the key and so beats the shipped default.
-  it.each([[''], ['--model Opus']])(
-    'leaves a Manual session prompting for args %s',
-    async (claude) => {
-      const launch = await resolverFor(record(), undefined, false, { claude })({
-        identity: IDENTITY
-      })
+  it('ignores the bypass flag the agent Arguments carry', async () => {
+    const launch = await resolverFor(
+      record(),
+      undefined,
+      'system',
+      async () => true,
+      () => ['--dangerously-skip-permissions']
+    )({ identity: IDENTITY, permissionMode: 'ask' })
 
-      expect(launch.options.permissionMode).toBeUndefined()
-      expect(launch.options.extraArgs).toEqual({ 'replay-user-messages': null })
-      expect(launch.options.allowDangerouslySkipPermissions).toBeUndefined()
-    }
-  )
+    expect(launch.options.permissionMode).toBe('default')
+    expect(launch.options.extraArgs).toEqual({ 'replay-user-messages': null })
+  })
 
   it('passes configured arguments on start without taking over permission or session flags', async () => {
     const launch = await resolverFor(
@@ -373,7 +326,7 @@ describe('claude structured launch resolution', () => {
       model: 'claude-sonnet-4-5',
       'replay-user-messages': null
     })
-    expect(launch.options.permissionMode).toBeUndefined()
+    expect(launch.options.permissionMode).toBe('default')
     expect(launch.options.sessionId).toBe(launch.providerSessionId)
   })
 
@@ -382,8 +335,7 @@ describe('claude structured launch resolution', () => {
     const resolve = resolverFor(
       record({ ...RESUMABLE, launchArgs: ['--model', 'stale'] }),
       undefined,
-      false,
-      { claude: '' },
+      'system',
       async () => true,
       () => args
     )
@@ -438,46 +390,11 @@ describe('claude structured launch resolution', () => {
     expect((await resolver({ identity: IDENTITY })).env?.ANTHROPIC_AUTH_TOKEN).toBe('rotated-token')
   })
 
-  // Stripping is the managed-account rule the terminal preflight computes at
-  // runtime-auth-preparation.ts:72; claude-structured-auth-parity.test.ts covers
-  // the system-auth half, where the user's own key has to survive.
-  it('strips ambient Anthropic auth under a managed account but keeps the rest of the env', async () => {
-    const restore = {
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
-      CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN,
-      ORCA_LAUNCH_RESOLUTION_MARKER: process.env.ORCA_LAUNCH_RESOLUTION_MARKER
-    }
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-SHELL-LEAK'
-    process.env.ANTHROPIC_AUTH_TOKEN = 'tok-SHELL-LEAK'
-    process.env.CLAUDE_CODE_OAUTH_TOKEN = 'oauth-SHELL-LEAK'
-    process.env.ORCA_LAUNCH_RESOLUTION_MARKER = 'inherited'
-    try {
-      const launch = await resolverFor(record(), undefined, true)({ identity: IDENTITY })
-
-      expect(launch.env?.ANTHROPIC_API_KEY).toBeUndefined()
-      expect(launch.env?.ANTHROPIC_AUTH_TOKEN).toBeUndefined()
-      expect(launch.env?.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined()
-      // The inherited env is still the base — only auth is removed from it.
-      expect(launch.env?.ORCA_LAUNCH_RESOLUTION_MARKER).toBe('inherited')
-      expect(launch.env?.PATH ?? launch.env?.Path).toBeTruthy()
-    } finally {
-      for (const [key, value] of Object.entries(restore)) {
-        if (value === undefined) {
-          delete process.env[key]
-        } else {
-          process.env[key] = value
-        }
-      }
-    }
-  })
-
   it("lets the agent read the host's chat attachment store, outside the workspace", async () => {
     const launch = await resolverFor(
       record(),
       undefined,
-      false,
-      { claude: '' },
+      'system',
       async () => true,
       undefined,
       '/state/agent-session-attachments'
@@ -491,8 +408,7 @@ describe('claude structured launch resolution', () => {
     const launch = await resolverFor(
       record(),
       undefined,
-      false,
-      { claude: '' },
+      'system',
       async () => true,
       () => ['--add-dir', '/extra'],
       '/state/agent-session-attachments'
@@ -510,7 +426,7 @@ describe('claude structured launch resolution', () => {
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
-      resolveAuthPolicy: () => ({ stripAuthEnv: false }),
+      resolveAuthPolicy: () => ({ account: 'system' }),
       resolveInheritedEnv: async () => ({ PATH: '/shell/bin', SHELL_ONLY_MARKER: 'from-shell' })
     })({ identity: IDENTITY })
 
@@ -523,7 +439,7 @@ describe('claude structured launch resolution', () => {
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
-      resolveAuthPolicy: () => ({ stripAuthEnv: false }),
+      resolveAuthPolicy: () => ({ account: 'system' }),
       resolveInheritedEnv: async () => ({
         PATH: '/shell/bin',
         CLAUDE_CONFIG_DIR: '/shell/claude',
@@ -542,7 +458,7 @@ describe('claude structured launch resolution', () => {
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
-      resolveAuthPolicy: () => ({ stripAuthEnv: false }),
+      resolveAuthPolicy: () => ({ account: 'system' }),
       resolveEnv: () => ({ CLAUDE_CONFIG_DIR: '/accounts/selected/home' }),
       resolveInheritedEnv: async () => ({ PATH: '/shell/bin', CLAUDE_CONFIG_DIR: '/shell/claude' })
     })({ identity: IDENTITY })
@@ -550,17 +466,24 @@ describe('claude structured launch resolution', () => {
     expect(launch.env?.CLAUDE_CONFIG_DIR).toBe('/accounts/selected/home')
   })
 
-  it('still strips an inherited auth key under a managed account', async () => {
+  it("keeps the shell's auth key under a managed account, beside its proxy address", async () => {
     const launch = await createClaudeStructuredLaunchResolver({
       resolveLaunchArgs: () => [],
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => '/usr/local/bin/claude',
-      resolveAuthPolicy: () => ({ stripAuthEnv: true }),
-      resolveInheritedEnv: async () => ({ PATH: '/shell/bin', ANTHROPIC_API_KEY: 'listed-key' })
+      resolveAuthPolicy: () => ({ account: 'managed' }),
+      resolveInheritedEnv: async () => ({
+        PATH: '/shell/bin',
+        ANTHROPIC_API_KEY: 'listed-key',
+        ANTHROPIC_BASE_URL: 'https://proxy.example.test'
+      })
     })({ identity: IDENTITY })
 
-    expect(launch.env?.ANTHROPIC_API_KEY).toBeUndefined()
+    expect(launch.env).toMatchObject({
+      ANTHROPIC_API_KEY: 'listed-key',
+      ANTHROPIC_BASE_URL: 'https://proxy.example.test'
+    })
   })
 
   it('lets an explicit Claude env overlay override ambient auth under system auth', async () => {
@@ -594,14 +517,18 @@ describe('claude structured launch resolution', () => {
       store: { getRecord: () => record(), pinLaunchDirectory: vi.fn() },
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveCommand: () => claudeCommand,
-      resolveAuthPolicy: () => ({ stripAuthEnv: false }),
+      resolveAuthPolicy: () => ({ account: 'system' }),
       resolveEnv: () => ({
         PATH: '/usr/bin',
         CLAUDE_CONFIG_DIR: '/accounts/selected/home'
       })
     })({ identity: IDENTITY })
 
-    expect((launch.env?.PATH ?? launch.env?.Path)?.split(delimiter)[0]).toBe(binDir)
+    // Right behind this app's CLI, so a runtime dir holding another `orca` cannot shadow it.
+    expect((launch.env?.PATH ?? launch.env?.Path)?.split(delimiter).slice(1)).toEqual([
+      binDir,
+      '/usr/bin'
+    ])
   })
 
   it('refuses other hosts, WSL, providers, and account-home variables', async () => {
@@ -626,66 +553,11 @@ describe('claude structured launch resolution', () => {
       })
     ).rejects.toThrow(/CLAUDE_CONFIG_DIR/)
   })
-
-  /** The account state can change while a session lives, and a reacquire after an unexpected child
-   *  exit re-resolves the launch. Without the gate here, that reacquire spawns under whatever the
-   *  account state has become. */
-  describe('managed-account gate on every acquisition', () => {
-    function resolverWithGate(read: () => ClaudeManagedAccountGateSettings | null) {
-      return createClaudeStructuredLaunchResolver({
-        resolveLaunchArgs: () => [],
-        store: { getRecord: () => RESUMABLE, pinLaunchDirectory: vi.fn() },
-        resolveWorkspacePath: async (id) => `/repos/${id}`,
-        resolveCommand: () => '/usr/local/bin/claude',
-        // Derived, not a literal: the gate and the policy must read the SAME account state, so a
-        // hardcoded value could assert a pairing production cannot produce.
-        resolveAuthPolicy: () => {
-          const settings = read()
-          if (!settings) {
-            throw new Error('the gate refuses before the auth policy is computed')
-          }
-          return claudeStructuredAuthPolicyForSettings(settings)
-        },
-        readManagedAccountGate: read
-      })
-    }
-
-    it('refuses a reacquire once the account state becomes the refused shape', async () => {
-      let gate: ClaudeManagedAccountGateSettings | null = HOST_SELECTED
-      const resolve = resolverWithGate(() => gate)
-
-      // Created while supported: the launch resolves and would spawn.
-      await expect(resolve({ identity: identityAt('leaf-current') })).resolves.toMatchObject({
-        providerSessionId: 'provider-current'
-      })
-
-      gate = WSL_ONLY_NORMALIZED
-
-      // Reacquire after the account state changed: refused before anything spawns, naming the
-      // account shape a person can change.
-      const refused = resolve({ identity: identityAt('leaf-current') })
-      await expect(refused).rejects.toBeInstanceOf(AgentSessionPreSpawnError)
-      await expect(refused).rejects.toMatchObject({ reason: 'managedAccountUnsupported' })
-    })
-
-    it('fails closed when the account state cannot be read, naming no situation', async () => {
-      const refused = resolverWithGate(() => null)({ identity: identityAt('leaf-current') })
-      await expect(refused).rejects.toBeInstanceOf(AgentSessionPreSpawnError)
-      await expect(refused).rejects.toMatchObject({ reason: undefined })
-    })
-
-    it('keeps resolving when no gate is wired, so other embedders are unaffected', async () => {
-      await expect(
-        resolverFor(RESUMABLE)({ identity: identityAt('leaf-current') })
-      ).resolves.toMatchObject({ providerSessionId: 'provider-current' })
-    })
-  })
 })
 
 describe('readable Claude thinking', () => {
   const launchWith = (
-    cliFlags?: ClaudeStructuredLaunchResolverDeps['cliFlags'],
-    authSwitchSettleTimeoutMs?: number,
+    cliFlags?: Parameters<typeof createClaudeStructuredLaunchResolver>[0]['cliFlags'],
     command = '/usr/local/bin/claude',
     launchArgs: string[] = []
   ) =>
@@ -694,15 +566,13 @@ describe('readable Claude thinking', () => {
       resolveWorkspacePath: async (id) => `/repos/${id}`,
       resolveLaunchArgs: () => launchArgs,
       resolveCommand: () => command,
-      resolveAuthPolicy: () => ({ stripAuthEnv: false }),
+      resolveAuthPolicy: () => ({ account: 'system' }),
       resolveEnv: () => ({ PROJECT_SHIM: '1', ANTHROPIC_API_KEY: 'sk-user' }),
       hasTranscript: async () => false,
-      ...(cliFlags ? { cliFlags } : {}),
-      ...(authSwitchSettleTimeoutMs === undefined ? {} : { authSwitchSettleTimeoutMs })
+      ...(cliFlags ? { cliFlags } : {})
     })({ identity: IDENTITY })
 
-  // Whether the CLI's directory holds a `node` decides if the runtime pairing puts that directory
-  // first on PATH (Linux CI's /usr/local/bin does, a Mac's usually does not), so both are pinned.
+  // Pin both runtime layouts instead of relying on the host's /usr/local/bin contents.
   it.each([
     ['without a sibling Node runtime', false],
     ['with a sibling Node runtime', true]
@@ -721,19 +591,17 @@ describe('readable Claude thinking', () => {
       if (sibling) {
         makeExecutable(join(binDir, process.platform === 'win32' ? 'node.cmd' : 'node'))
       }
-      const launch = await launchWith({ supports }, undefined, command)
+      const launch = await launchWith({ supports }, command)
       const asked = supports.mock.calls[0]?.[1]
       expect(asked).toMatchObject({ command, cwd: '/repos/workspace-1' })
       const segments = (env: Record<string, string> | undefined) =>
         (env?.PATH ?? env?.Path ?? '').split(delimiter)
-      // The launch's PATH is the probe's plus Orca's own CLI directory, which holds no `claude` or
-      // runtime, so both resolve the same binary and the same shims in the same order.
+      // Orca's CLI directory is the only PATH difference between probe and launch.
       const orcaCliDir = launch.env?.ORCA_CLI_COMMAND ? dirname(launch.env.ORCA_CLI_COMMAND) : null
       expect(segments(launch.env).filter((dir) => dir !== orcaCliDir)).toEqual(segments(asked?.env))
       expect(segments(asked?.env)[0] === binDir).toBe(sibling)
       expect(asked?.env).toMatchObject({ PROJECT_SHIM: '1' })
       expect(asked?.env).not.toHaveProperty('ANTHROPIC_API_KEY')
-      // The launch keeps the credential the user gave it.
       expect(launch.env).toMatchObject({ ANTHROPIC_API_KEY: 'sk-user' })
       expect(launch.options.extraArgs).toEqual({
         'replay-user-messages': null,
@@ -753,7 +621,6 @@ describe('readable Claude thinking', () => {
     const launch = await launchWith(
       { supports: async (flag) => flag === CLAUDE_THINKING_DISPLAY_FLAG },
       undefined,
-      undefined,
       ['--effort', 'high', '--thinking-display', 'omitted']
     )
     expect(launch.options.extraArgs).toEqual({
@@ -761,22 +628,5 @@ describe('readable Claude thinking', () => {
       'replay-user-messages': null,
       'thinking-display': 'summarized'
     })
-  })
-
-  it('still rechecks an account switch that began while the probe ran', async () => {
-    try {
-      const launch = launchWith(
-        {
-          supports: async () => {
-            beginClaudeAuthSwitch()
-            return false
-          }
-        },
-        10
-      )
-      await expect(launch).rejects.toMatchObject({ reason: 'accountSwitchInProgress' })
-    } finally {
-      endClaudeAuthSwitch()
-    }
   })
 })

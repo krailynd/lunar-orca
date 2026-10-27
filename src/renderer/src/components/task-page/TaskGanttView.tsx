@@ -9,7 +9,7 @@ import {
   Plus,
   Sparkles
 } from 'lucide-react'
-import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
+import type { TaskPageComposerActionsModel } from './use-task-page-composer-actions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {

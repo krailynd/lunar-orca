@@ -10,9 +10,9 @@ import {
 } from './orcad-managed-idle-exit'
 import {
   ORCAD_E2E_IDLE_TIMEOUT_ENV,
-  ORCAD_IDLE_EXIT_TIMEOUT_MS,
-  ORCAD_MANAGED_ACTIVATION_ROOT_ENV
+  ORCAD_IDLE_EXIT_TIMEOUT_MS
 } from '../../shared/orcad-idle-exit'
+import { ORCAD_MANAGED_ACTIVATION_ROOT_ENV } from '../../shared/orcad-managed-launch-env'
 
 const config = { timeoutMs: 1_000, activationRoot: '/home/u/.orca-remote/.fence' }
 
@@ -23,8 +23,10 @@ function idlePorts(): OrcadManagedIdleExitPorts {
     countDaemonSessions: async () => 0,
     hasDaemon: () => true,
     agentStates: () => [{ state: 'done' }],
+    hasChatProviders: () => false,
     hasStagedMigration: () => false,
     automationsBusy: () => false,
+    emulatorsBusy: async () => false,
     activationFenceExists: async () => false
   }
 }
@@ -73,8 +75,10 @@ describe('createOrcadIdleProbes', () => {
       clients: 'idle',
       terminals: 'idle',
       agents: 'idle',
+      'chat-providers': 'idle',
       migration: 'idle',
       automations: 'idle',
+      emulators: 'idle',
       activation: 'idle'
     })
   })
@@ -97,8 +101,10 @@ describe('createOrcadIdleProbes', () => {
     ['an in-process terminal', { listTerminals: async () => [{ id: 'pty-1' }] }, 'terminals'],
     ['a live daemon session', { countDaemonSessions: async () => 2 }, 'terminals'],
     ['a working agent', { agentStates: () => [{ state: 'working' }] }, 'agents'],
+    ['a loaded chat provider', { hasChatProviders: () => true }, 'chat-providers'],
     ['a staged migration', { hasStagedMigration: () => true }, 'migration'],
     ['an enabled or running automation', { automationsBusy: () => true }, 'automations'],
+    ['an Orca-started emulator', { emulatorsBusy: async () => true }, 'emulators'],
     ['a held activation fence', { activationFenceExists: async () => true }, 'activation']
   ])('reads %s as busy', async (_label, override, probe) => {
     expect((await verdicts({ ...idlePorts(), ...override }))[probe]).toBe('busy')

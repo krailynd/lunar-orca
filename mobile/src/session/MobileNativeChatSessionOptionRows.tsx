@@ -1,8 +1,5 @@
-// The pill and choice-row primitives the session-option card is built from, kept
-// beside it so the card file stays about layout and apply wiring.
-
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native'
-import { Check, ChevronDown, ChevronRight } from 'lucide-react-native'
+import { Check, ChevronRight, ShieldAlert, type LucideIcon } from 'lucide-react-native'
 import { colors, radii, spacing, typography } from '../theme/mobile-theme'
 import {
   sessionOptionValueMarker,
@@ -11,22 +8,28 @@ import {
   type SessionOptionValue
 } from '../../../src/shared/native-chat-session-options'
 
-/** Muted one-liner above a group — dispatch state, or why a row is locked. */
 export function SessionOptionCaption({ children }: { children: string }): React.JSX.Element {
   return <Text style={styles.caption}>{children}</Text>
 }
 
-export function Pill({
-  label,
+export function ModelPill({
+  primary,
+  secondary,
+  warning,
+  icon: Icon,
   accessibleName,
   disabled,
   onPress
 }: {
-  label: string
+  primary: string
+  secondary: string | null
+  warning: boolean
+  icon?: LucideIcon
   accessibleName: string
   disabled: boolean
   onPress: () => void
 }): React.JSX.Element {
+  const PillIcon = Icon ?? (warning ? ShieldAlert : undefined)
   return (
     <Pressable
       accessibilityLabel={accessibleName}
@@ -37,14 +40,19 @@ export function Pill({
       disabled={disabled}
       hitSlop={6}
     >
-      <Text
-        style={[styles.pillText, disabled && styles.pillTextDisabled]}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {label}
-      </Text>
-      <ChevronDown size={12} color={disabled ? colors.textMuted : colors.textSecondary} />
+      {PillIcon ? (
+        <PillIcon
+          size={15}
+          color={warning ? colors.statusAmber : disabled ? colors.textMuted : colors.textSecondary}
+          strokeWidth={2.2}
+        />
+      ) : null}
+      {!Icon ? (
+        <Text style={styles.pillText} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={[styles.pillPrimary, disabled && styles.pillTextDisabled]}>{primary}</Text>
+          {secondary ? <Text style={styles.pillSecondary}>{`  ${secondary}`}</Text> : null}
+        </Text>
+      ) : null}
     </Pressable>
   )
 }
@@ -56,7 +64,8 @@ function ChoiceRow({
   disabled,
   grouped,
   divided,
-  onPress
+  onPress,
+  labelColor
 }: {
   label: string
   description?: string
@@ -65,6 +74,7 @@ function ChoiceRow({
   grouped: boolean
   divided: boolean
   onPress: () => void
+  labelColor?: string
 }): React.JSX.Element {
   return (
     <Pressable
@@ -72,25 +82,30 @@ function ChoiceRow({
       accessibilityState={{ checked: selected, disabled }}
       style={[
         styles.row,
-        selected && styles.rowSelected,
         grouped && styles.rowGrouped,
-        divided && styles.rowDivided,
-        disabled && styles.rowDisabled
+        selected && styles.rowSelected,
+        divided && styles.rowDivided
       ]}
       onPress={onPress}
       disabled={disabled}
     >
-      <View style={[styles.radio, selected && styles.radioOn]}>
-        {selected ? <Check size={12} color={colors.bgBase} strokeWidth={3} /> : null}
-      </View>
       <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text
+          style={[
+            styles.rowLabel,
+            disabled && !selected && styles.labelDisabled,
+            labelColor ? { color: labelColor } : null
+          ]}
+        >
+          {label}
+        </Text>
         {description ? (
           <Text style={styles.rowDescription} numberOfLines={2}>
             {description}
           </Text>
         ) : null}
       </View>
+      {selected ? <Check size={18} color={colors.textPrimary} strokeWidth={2.4} /> : null}
     </Pressable>
   )
 }
@@ -105,16 +120,15 @@ function ToggleRow({
 }: {
   label: string
   checked: boolean
-  /** Where the rendered value came from, or null once something picked it. */
   marker: SessionOptionValueMarker | null
   disabled: boolean
   grouped: boolean
   onToggle: (next: boolean) => void
 }): React.JSX.Element {
   return (
-    <View style={[styles.row, grouped && styles.rowGrouped, disabled && styles.rowDisabled]}>
+    <View style={[styles.row, grouped && styles.rowGrouped]}>
       <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowLabel, disabled && styles.labelDisabled]}>{label}</Text>
       </View>
       {marker ? (
         <Text style={styles.rowMarker}>{marker === 'default' ? 'Default' : 'Not reported'}</Text>
@@ -146,12 +160,12 @@ function ActionRow({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled }}
-      style={[styles.row, grouped && styles.rowGrouped, disabled && styles.rowDisabled]}
+      style={[styles.row, grouped && styles.rowGrouped]}
       onPress={onPress}
       disabled={disabled}
     >
       <View style={styles.rowBody}>
-        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={[styles.rowLabel, disabled && styles.labelDisabled]}>{label}</Text>
       </View>
     </Pressable>
   )
@@ -160,16 +174,32 @@ function ActionRow({
 export function SessionOptionSummaryRow({
   label,
   value,
+  valueColor,
   disabled,
   divided,
   onPress
 }: {
   label: string
   value: string
+  valueColor?: string
   disabled: boolean
   divided: boolean
-  onPress: () => void
+  onPress?: () => void
 }): React.JSX.Element {
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={`${label}, ${value}`}
+        style={[styles.summaryRow, divided && styles.rowDivided]}
+      >
+        <Text style={styles.summaryLabel}>{label}</Text>
+        <Text style={styles.summaryValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+    )
+  }
   return (
     <Pressable
       accessibilityLabel={`${label}, ${value}`}
@@ -178,14 +208,16 @@ export function SessionOptionSummaryRow({
       style={({ pressed }) => [
         styles.summaryRow,
         divided && styles.rowDivided,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.rowDisabled
+        pressed && !disabled && styles.pressed
       ]}
       onPress={onPress}
       disabled={disabled}
     >
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue} numberOfLines={1}>
+      <Text style={[styles.summaryLabel, disabled && styles.labelDisabled]}>{label}</Text>
+      <Text
+        style={[styles.summaryValue, valueColor ? { color: valueColor } : null]}
+        numberOfLines={1}
+      >
         {value}
       </Text>
       <ChevronRight size={16} color={colors.textMuted} strokeWidth={2.2} />
@@ -198,13 +230,15 @@ export function DescriptorRows({
   disabled,
   grouped = false,
   onSetOption,
-  onInvokeAction
+  onInvokeAction,
+  choiceLabelColor
 }: {
   descriptor: SessionOptionDescriptor
   disabled: boolean
   grouped?: boolean
   onSetOption: (value: SessionOptionValue) => void
   onInvokeAction: () => void
+  choiceLabelColor?: (value: string) => string | undefined
 }): React.JSX.Element {
   const locked = disabled || !descriptor.settable
   // Why: flip-only without a baseline is an action — never claim On/Off.
@@ -229,9 +263,7 @@ export function DescriptorRows({
       />
     )
   }
-  // One switch, not an On/Off pair: the option is binary. The value always
-  // renders; the marker is what keeps an unpicked one from reading as confirmed,
-  // since the switch itself cannot say "nobody said".
+  // An unknown baseline still renders a switch; the source marker prevents implying the value was confirmed.
   if (descriptor.kind.type === 'boolean') {
     return (
       <ToggleRow
@@ -257,6 +289,7 @@ export function DescriptorRows({
           grouped={grouped}
           divided={grouped && index < choices.length - 1}
           onPress={() => onSetOption(choice.value)}
+          labelColor={choiceLabelColor?.(choice.value)}
         />
       ))}
     </>
@@ -267,21 +300,22 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    maxWidth: 180,
-    minHeight: 28,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: radii.button,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgRaised
+    gap: 6,
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    backgroundColor: colors.composerControl
   },
   pillText: {
-    color: colors.textSecondary,
-    fontSize: typography.metaSize,
-    fontWeight: '600',
-    flexShrink: 1
+    flexShrink: 1,
+    fontSize: typography.bodySize
+  },
+  pillPrimary: {
+    color: colors.textPrimary,
+    fontWeight: '500'
+  },
+  pillSecondary: {
+    color: colors.textMuted
   },
   pillTextDisabled: {
     color: colors.textMuted
@@ -302,8 +336,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: spacing.sm,
-    padding: spacing.sm,
-    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: spacing.sm,
+    minHeight: 50,
     alignItems: 'center',
     borderRadius: radii.card,
     backgroundColor: colors.bgRaised,
@@ -312,7 +347,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs
   },
   rowSelected: {
-    borderColor: colors.statusGreen
+    borderColor: colors.textSecondary,
+    backgroundColor: colors.composerControl
   },
   rowGrouped: {
     marginBottom: 0,
@@ -322,23 +358,10 @@ const styles = StyleSheet.create({
   },
   rowDivided: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderSubtle
+    borderBottomColor: colors.composerBorder
   },
-  rowDisabled: {
-    opacity: 0.5
-  },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  radioOn: {
-    backgroundColor: colors.statusGreen,
-    borderColor: colors.statusGreen
+  labelDisabled: {
+    color: colors.textSecondary
   },
   rowBody: {
     flex: 1,
@@ -354,11 +377,11 @@ const styles = StyleSheet.create({
     fontSize: typography.metaSize
   },
   summaryRow: {
-    minHeight: 48,
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 14,
     paddingVertical: spacing.sm
   },
   summaryLabel: {

@@ -7,7 +7,7 @@ import { parseWorkspaceSession } from '../../../../shared/workspace-session-sche
 vi.mock('@/store', () => ({ useAppStore: { getState: () => ({}), subscribe: () => () => {} } }))
 
 import { structuredAgentAcceptsImages } from '@/runtime/use-host-structured-agent'
-import { isStructuredTab } from './structured-agent-session-tabs'
+import { isStructuredTab } from '../../../../shared/structured-agent-session-tab'
 import { structuredAgentSessionSeedCatalog } from '../../../../shared/structured-agent-session-seed-catalog'
 
 const chatTab = (agentSessionAgent: unknown) => ({
@@ -43,7 +43,6 @@ describe('a host-registered agent on the structured chat surface', () => {
   it("renders a registered agent's chat tab, including after a reload", () => {
     expect(isStructuredTab(reloadedTab('grok'))).toBe(true)
     expect(isStructuredTab(reloadedTab('claude'))).toBe(true)
-    // A malformed id degrades to no agent, which mounts no chat pane.
     expect(isStructuredTab(reloadedTab('not an agent!'))).toBe(false)
   })
 
@@ -72,5 +71,9 @@ describe('a host-registered agent on the structured chat surface', () => {
     // Unlisted: an older host's built-ins keep images; any other agent claims none.
     expect(structuredAgentAcceptsImages(undefined, 'claude')).toBe(true)
     expect(structuredAgentAcceptsImages(undefined, 'grok')).toBe(false)
+    // The session's options report outranks both, either way.
+    expect(structuredAgentAcceptsImages(record(true), 'grok', false)).toBe(false)
+    expect(structuredAgentAcceptsImages(undefined, 'claude', false)).toBe(false)
+    expect(structuredAgentAcceptsImages(undefined, 'grok', true)).toBe(true)
   })
 })

@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import type { TuiAgent } from '../../shared/tui-agent'
-import { registerPtyHandlers, setLocalPtyProvider } from './pty'
+import { registerPtyHandlers } from './pty/register-handlers'
+import { setLocalPtyProvider } from './pty/provider/registry'
 
 type IpcHandlerMap = Map<string, (_event: unknown, args: unknown) => unknown>
 
@@ -13,7 +14,6 @@ export type DaemonSpawnCall = {
   terminalWindowsPowerShellImplementation?: string
 }
 
-/** Daemon-backed provider doubles for the "daemon-active provider" spawn-env suites. */
 export function createDaemonActiveProviderFixtures(ctx: {
   handlers: IpcHandlerMap
   mainWindow: unknown
@@ -103,7 +103,6 @@ export function createDaemonActiveProviderFixtures(ctx: {
       httpProxyBypassRules?: string
     },
     processEnvOverrides?: Record<string, string | undefined>,
-    // Why: daemon spawn tests exercise both WSL launch metadata from main and PR #2662 command threading for OMP.
     spawnArgs?: {
       cwd?: string
       worktreeId?: string

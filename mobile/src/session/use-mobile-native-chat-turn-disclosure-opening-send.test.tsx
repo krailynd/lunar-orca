@@ -1,7 +1,4 @@
-// On the phone, as on the desktop: a message sent while the turn ahead is still opening waits after
-// that turn's live status, and the live status stays on the turn ahead, never on the waiting one.
-// The phone keeps no outbox: its rows are the host's recorded ones, plus its own echo of a send the
-// host accepted, until that send's row arrives. The list is built as the phone's view builds it.
+// Build the real mobile list to keep sends waiting behind opening turns after the owning live status; host rows replace accepted local echoes.
 
 import { createElement } from 'react'
 import { act, create, type ReactTestRenderer } from 'react-test-renderer'
@@ -15,11 +12,14 @@ import type {
   AgentJournalSubmission
 } from '../../../src/shared/agent-session-journal-types'
 import type { NativeChatMessage } from '../../../src/shared/native-chat-types'
-import { projectStructuredAgentSessionMessages } from '../../../src/shared/structured-agent-session-message-projection'
+import { nativeChatTurnMembership } from '../../../src/shared/native-chat-turn-membership'
+import {
+  projectStructuredAgentSessionMessages,
+  type StructuredAgentSessionOptimisticMessage
+} from '../../../src/shared/structured-agent-session-message-projection'
 import {
   buildMobileNativeChatTransientData,
-  foldMobileNativeChatMessages,
-  type MobileNativeChatPendingItem
+  foldMobileNativeChatMessages
 } from './mobile-native-chat-render-data'
 import { useMobileNativeChatTurnDisclosure } from './use-mobile-native-chat-turn-disclosure'
 
@@ -65,11 +65,9 @@ function submission(
   }
 }
 
-/** "first" handed over (row 5) with no turn record yet: its turn opens. */
 const openingItems = [userMessage('first', 5)]
 const openingSubmissions = [submission('first', { acceptedSequence: 3, handedOverAt: NOW })]
 
-/** The first send's turn record, written as its turn opens; Codex names its own provider key. */
 const FIRST_TURN_PROVIDER_KEY = 'codex:thread:turn-first:0'
 const firstTurnOpened = item('turn-first', 6, {
   kind: 'turn',
@@ -81,25 +79,35 @@ const firstTurnOpened = item('turn-first', 6, {
 
 type Disclosure = ReturnType<typeof useMobileNativeChatTurnDisclosure>
 
+function echo(
+  clientMessageId: string,
+  sentWhileStopping = false
+): StructuredAgentSessionOptimisticMessage {
+  return {
+    clientMessageId,
+    body: { kind: 'message', role: 'user', blocks: [{ type: 'text', text: clientMessageId }] },
+    queuedAt: NOW,
+    ...(sentWhileStopping ? { sentWhileStopping: true as const } : {})
+  }
+}
+
 function Harness(props: {
   items: AgentJournalRenderItem[]
   submissions: AgentJournalSubmission[]
   stopping: boolean
-  pending: MobileNativeChatPendingItem[]
+  optimistic: StructuredAgentSessionOptimisticMessage[]
   seen: (disclosure: Disclosure) => void
 }): null {
-  // As the phone projects: no other rejected send drawn in place.
   const messages: NativeChatMessage[] = projectStructuredAgentSessionMessages(
     props.items,
-    [],
-    props.submissions,
-    { rejectedInPlace: false }
+    props.optimistic,
+    props.submissions
   )
   const { data } = buildMobileNativeChatTransientData({
     messages,
-    folded: foldMobileNativeChatMessages(messages),
+    folded: foldMobileNativeChatMessages(messages, 'claude'),
     streaming: null,
-    pending: props.pending
+    pending: []
   })
   const disclosure = useMobileNativeChatTurnDisclosure({
     messages: data,
@@ -126,7 +134,7 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     items: AgentJournalRenderItem[],
     submissions: AgentJournalSubmission[],
     stopping = false,
-    pending: MobileNativeChatPendingItem[] = []
+    optimistic: StructuredAgentSessionOptimisticMessage[] = []
   ): { listed: string[]; waiting: string[]; liveOn: string | undefined } {
     let seen: Disclosure | undefined
     act(() => {
@@ -134,7 +142,7 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
         items,
         submissions,
         stopping,
-        pending,
+        optimistic,
         seen: (disclosure) => {
           seen = disclosure
         }
@@ -160,7 +168,6 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     }
   }
 
-  // Accepted at a row above the first send's handover, yet still drawn after its live status.
   it('keeps a queued send waiting after the live status', () => {
     expect(
       frame(
@@ -174,33 +181,27 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     })
   })
 
-  // Its echo of a send the host accepted, before that send's row reaches the phone.
   it('keeps its own echo of an accepted send waiting after the live status, Stopping or not', () => {
-    const echo = {
-      id: 'pending-1',
-      text: 'second',
-      baselineTailMessageId: agentJournalSubmissionKey('first')
-    }
     for (const stopping of [false, true]) {
-      expect(frame(openingItems, openingSubmissions, stopping, [echo])).toEqual({
-        listed: [agentJournalSubmissionKey('first')],
-        waiting: ['pending-1'],
-        liveOn: agentJournalSubmissionKey('first')
-      })
+      expect(frame(openingItems, openingSubmissions, stopping, [echo('second', stopping)])).toEqual(
+        {
+          listed: [agentJournalSubmissionKey('first')],
+          waiting: [agentJournalSubmissionKey('second')],
+          liveOn: agentJournalSubmissionKey('first')
+        }
+      )
     }
-    // While Stopping, sent after a queued B the Stop holds.
     expect(
       frame(
         [...openingItems, userMessage('b', 4)],
         [...openingSubmissions, submission('b', { acceptedSequence: 4 })],
         true,
-        [{ ...echo, baselineTailMessageId: agentJournalSubmissionKey('b') }]
+        [echo('second', true)]
       ).waiting
-    ).toEqual([agentJournalSubmissionKey('b'), 'pending-1'])
+    ).toEqual([agentJournalSubmissionKey('b'), agentJournalSubmissionKey('second')])
   })
 
-  // Taken back, B stays where it was sent with its stop row: listed after the live turn, no longer
-  // waiting.
+  // Stop-withdrawn B remains at its send position without a waiting turn.
   it('lists B after the live turn when a Stop takes it back, never above the live status', () => {
     const queued = [...openingItems, userMessage('b', 4)]
     const stopping = frame(
@@ -234,15 +235,61 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     providerItemId: FIRST_TURN_PROVIDER_KEY,
     resolvedAt: NOW + 20
   })
-  // Handed over as a steer once the turn opened (row 8).
+  // Opening-turn sends stay put as steers; Stopping sends wait behind the turn being stopped.
+  it('draws its echo after a running turn, and waits behind it only when sent while Stopping', () => {
+    const [first] = openingSubmissions
+    if (!first) {
+      throw new Error('expected the first send')
+    }
+    const running = [...openingItems, firstTurnOpened]
+    const after = {
+      listed: [agentJournalSubmissionKey('first'), agentJournalSubmissionKey('second')],
+      waiting: [],
+      liveOn: agentJournalSubmissionKey('first')
+    }
+    expect(frame(running, [echoed(first)], false, [echo('second')])).toEqual(after)
+    expect(frame(running, [echoed(first)], true, [echo('second')])).toEqual(after)
+    expect(frame(running, [echoed(first)], true, [echo('second', true)])).toEqual({
+      listed: [agentJournalSubmissionKey('first')],
+      waiting: [agentJournalSubmissionKey('second')],
+      liveOn: agentJournalSubmissionKey('first')
+    })
+  })
+
+  it('opens a turn of its own with its echo once the turn ahead has ended', () => {
+    const [first] = openingSubmissions
+    if (!first) {
+      throw new Error('expected the first send')
+    }
+    const ended = [
+      ...openingItems,
+      item('turn-first', 6, {
+        kind: 'turn',
+        turnId: 'turn-first',
+        state: 'completed',
+        userItemId: FIRST_TURN_PROVIDER_KEY,
+        startedAt: NOW
+      })
+    ]
+    const messages = projectStructuredAgentSessionMessages(ended, [echo('second')], [echoed(first)])
+    const { turnKeys } = nativeChatTurnMembership(messages, {
+      items: ended,
+      submissions: [echoed(first)]
+    })
+    expect(messages.map((message) => message.id)).toEqual([
+      agentJournalSubmissionKey('first'),
+      agentJournalSubmissionKey('second')
+    ])
+    expect(turnKeys[1]).toBe(agentJournalSubmissionKey('second'))
+    expect(turnKeys[0]).not.toBe(turnKeys[1])
+  })
+
   const steered = [
     ...openingItems,
     firstTurnOpened,
     { ...userMessage('second', 8), turnScope: { kind: 'turn' as const, turnItemId: 'turn-first' } }
   ]
 
-  /** One frame per commit: "second" is listed in the turn it lands in, after "first", and the live
-   *  status stays on "first". */
   function walkTurnOpening(steps: [AgentJournalRenderItem[], AgentJournalSubmission[]][]): void {
     for (const step of steps) {
       expect(frame(...step)).toEqual({
@@ -260,20 +307,17 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     }
     const handedOver = submission('second', { acceptedSequence: 7, handedOverAt: NOW + 10 })
     walkTurnOpening([
-      // Recorded after the turn record, not yet handed over.
       [
         [...openingItems, firstTurnOpened, userMessage('second', 7)],
         [first, submission('second', { acceptedSequence: 7 })]
       ],
       [steered, [first, handedOver]],
-      // Codex echoes the steer before the send that opened the turn, then that send.
       [steered, [first, echoed(handedOver)]],
       [steered, [echoed(first), echoed(handedOver)]]
     ])
   })
 
-  // Two messages queued behind /compact, or sent while Stopping: "second" is accepted above the
-  // first send's handover, and the first send's turn record lands before "second" is handed over.
+  // Second is accepted before first’s handover, but handed over only after first’s turn record; projection must keep it behind first.
   it('lists it in the turn ahead at every step when it was accepted above the first send', () => {
     const [first] = openingSubmissions
     if (!first) {
@@ -284,7 +328,6 @@ describe('a message sent while the turn ahead is still opening, on the phone', (
     const handedOver = { ...queued, handedOverAt: NOW + 10 }
     walkTurnOpening([
       [queuedAbove, [first, queued]],
-      // The first send echoes while "second" is still queued.
       [queuedAbove, [echoed(first), queued]],
       [steered, [first, handedOver]],
       [steered, [first, echoed(handedOver)]],

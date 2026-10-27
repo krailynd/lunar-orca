@@ -1,4 +1,4 @@
-import type { ChildProcessHandle } from '../../shared/child-process/process-spec'
+import type { ChildProcessHandle } from '@orca/process-host/process-spec'
 import type { SearchOptions, SearchResult } from '../../shared/code-search-types'
 import { RipgrepSearchDiagnostics } from '../../shared/ripgrep-search-diagnostics'
 import { SearchSubprocessLineAccumulator } from '../../shared/search-subprocess-lines'
@@ -24,6 +24,9 @@ import { toWindowsWslPath } from '../wsl'
 import { bundledRipgrepUnavailableError } from './bundled-ripgrep-path'
 import { spawnBundledRipgrep } from './bundled-ripgrep-spawn'
 import { stopBundledRipgrep } from './bundled-ripgrep-stop'
+
+// NTFS permits POSIX-created names/types Windows rg cannot open (1/2/1920); skip them without truncating the search.
+const WINDOWS_UNOPENABLE_PATH_OS_ERRORS: ReadonlySet<number> = new Set([1, 2, 1920])
 
 export function runBundledRipgrepTextSearch({
   options,
@@ -52,7 +55,11 @@ export function runBundledRipgrepTextSearch({
 
     const acc = createAccumulator()
     const lines = new SearchSubprocessLineAccumulator()
-    const diagnostics = new RipgrepSearchDiagnostics()
+    const diagnostics = new RipgrepSearchDiagnostics(
+      process.platform === 'win32' && !wslDistroForOutput
+        ? WINDOWS_UNOPENABLE_PATH_OS_ERRORS
+        : undefined
+    )
     let resolved = false
     let processErrorObserved = false
     let unavailableExitObserved = false
@@ -78,7 +85,7 @@ export function runBundledRipgrepTextSearch({
       lines.clear()
       clearTimeout(killTimeout)
       signal?.removeEventListener('abort', onAbort)
-      // Why: child.kill() is advisory; detach our closures so repeated searches don't retain old scans if rg ignores it.
+      // Kill is advisory; detach closures so ignored cancellation cannot retain old scans.
       child?.stdout?.off('data', handleStdoutData)
       child?.stderr?.off('data', handleStderrData)
       child?.off('error', handleError)
@@ -109,7 +116,6 @@ export function runBundledRipgrepTextSearch({
       }
     }
 
-    // A synchronous spawn failure has no child to clean up.
     let nextChild: ReturnType<typeof spawnBundledRipgrep>
     try {
       nextChild = spawnBundledRipgrep(rgArgs, {
@@ -142,7 +148,7 @@ export function runBundledRipgrepTextSearch({
     }
     const handleError = (error: NodeJS.ErrnoException): void => {
       processErrorObserved = true
-      // Why: fd/process pressure is not a broken install; say so instead of blaming the bundled binary.
+      // Resource pressure is transient, not evidence of a broken bundled install.
       if (isTransientRipgrepSpawnError(error)) {
         finish(Promise.reject(new Error(`rg could not start (${error.code}); try again`)))
         return
@@ -171,8 +177,7 @@ export function runBundledRipgrepTextSearch({
       }
     }
     const handleClose = (code: number | null, signal: NodeJS.Signals | null): void => {
-      // Why first: this code is above rg's own 0/1/2, so the unavailable check would otherwise
-      // read an unreachable workspace as a broken install and tell the user to reinstall Orca.
+      // Diagnose missing cwd before rg availability or users would be told to reinstall for moved workspaces.
       if (isRipgrepMissingCwdExit(code)) {
         finish(Promise.reject(ripgrepMissingCwdError(rootPath)))
         return
@@ -200,7 +205,7 @@ export function runBundledRipgrepTextSearch({
     nextChild.once('error', handleError)
     nextChild.once('close', handleClose)
 
-    // Why: timeout kills the child mid-scan; mark truncated so the UI shows incomplete results.
+    // Cancelled mid-scan results must be marked incomplete.
     signal?.addEventListener('abort', onAbort, { once: true })
     if (signal?.aborted) {
       onAbort()

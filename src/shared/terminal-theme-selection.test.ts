@@ -43,7 +43,6 @@ describe('the terminal colours a host configures', () => {
       resolveConfiguredTerminalColors({ ...base, terminalThemeDark: 'no such theme' }, true)
     ).toEqual({ foreground: '#ffffff', background: '#18191c' })
   })
-
   it('keeps using the dark theme in light mode when no separate light theme is set', () => {
     expect(
       selectTerminalTheme({ ...base, theme: 'light', terminalUseSeparateLightTheme: false }, true)

@@ -20,6 +20,7 @@ type ComposerSourceContextStateInput = Pick<
   | 'selectedRepo'
   | 'selectedRepoIsGit'
   | 'setInternalRepoId'
+  | 'setPendingInitialWorkspaceTarget'
   | 'selectedWorkspaceTarget'
 > & {
   initialNote?: string
@@ -33,7 +34,7 @@ import {
   buildTaskSourceContextFromRepo,
   normalizeTaskSourceContext
 } from '../../../../shared/task-source-context'
-import { resolveJiraSourceHostId } from '@/lib/jira-source-host'
+import { resolveJiraSourceHostId } from '../../../../shared/jira/jira-source-host'
 import {
   normalizeGitHubLinkedWorkItem,
   getGitHubLinkedWorkItemIdentity
@@ -60,18 +61,20 @@ export function useComposerSourceContextState(input: ComposerSourceContextStateI
     selectedRepo,
     selectedRepoIsGit,
     setInternalRepoId,
+    setPendingInitialWorkspaceTarget,
     selectedWorkspaceTarget
   } = input
   const { getMatchingLinkedTaskSourceContext } = decisions
   const setRepoId = useCallback(
     (value: string) => {
+      setPendingInitialWorkspaceTarget(null)
       if (onRepoIdOverrideChange) {
         onRepoIdOverrideChange(value)
       } else {
         setInternalRepoId(value)
       }
     },
-    [onRepoIdOverrideChange, setInternalRepoId]
+    [onRepoIdOverrideChange, setInternalRepoId, setPendingInitialWorkspaceTarget]
   )
 
   const [name, setName] = useState<string>(

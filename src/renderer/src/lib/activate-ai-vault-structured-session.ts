@@ -2,32 +2,21 @@ import { toast } from 'sonner'
 import type { AiVaultSession } from '../../../shared/ai-vault-types'
 import { translate } from '@/i18n/i18n'
 import { activateAndRevealWorktree } from './worktree-activation'
-import { activateStructuredAgentSessionById } from './structured-agent-session-tab-activation'
+import { activateStructuredAgentSessionById } from './agent-session/structured-agent-session-tab-activation'
 import { useAppStore } from '@/store'
-import { getRuntimeEnvironmentIdForWorktree } from './worktree-runtime-owner'
-import {
-  callRuntimeRpc,
-  getActiveRuntimeTarget,
-  runtimeEnvironmentSupportsCapability,
-  type RuntimeClientTarget
-} from '@/runtime/runtime-rpc-client'
+import { runtimeEnvironmentIdOrLocalUnlessTwin } from './worktree-runtime-owner'
+import { callRuntimeRpc, runtimeEnvironmentSupportsCapability } from '@/runtime/runtime-rpc-client'
+import type { RuntimeClientTarget } from '../../../shared/runtime-client-target'
+import { runtimeTargetForOwnerEnvironment } from '@/runtime/runtime-client-target'
 import { toRuntimeWorktreeSelector } from '@/runtime/runtime-worktree-selector'
-import type { RuntimeMobileSessionTabsResult } from '../../../shared/runtime-types'
-import {
-  applyStructuredSessionTabSnapshots,
-  isCurrentLocalStructuredSessionGeneration,
-  localStructuredSessionGeneration
-} from '@/runtime/local-structured-session-tabs-sync'
+import { refreshLocalStructuredSessionWorktreeTabs } from '@/runtime/local-structured-session-tabs-sync/inventory-refresh'
 import { STRUCTURED_AGENT_SESSION_REVEAL_RUNTIME_CAPABILITY } from '../../../shared/protocol-version'
 import { isRuntimeCompatBlockError } from '@/runtime/runtime-protocol-compat'
 import { executionHostIdForStructuredTarget } from '@/runtime/structured-agent-session-owner'
 
 const STRUCTURED_SESSION_RESTORE_TIMEOUT_MS = 5_000
 
-/** Why four: the three terminal answers a user can act on differ, and folding them together sends
- *  someone to the wrong remedy — wait, give up, or update the host. `unreachable` is the only one
- *  that improves by retrying, and `gone` means the host said it holds no such chat, never that the
- *  host could not answer for a reason of its own. */
+/** Keep distinct remedies: retry unreachable hosts, stop on a confirmed missing record, or update incompatible hosts/adapters. Failure to answer never proves a chat is gone. */
 export type StructuredSessionRevealOutcome =
   | 'revealed'
   | 'gone'
@@ -47,8 +36,6 @@ type StructuredSessionActivationDeps = {
   hostCannotOpen: () => void
 }
 
-/** The feedback a click that opens a chat gives when it cannot, shared by every surface that
- *  opens one. */
 export const structuredSessionOpenFeedback: Pick<
   StructuredSessionActivationDeps,
   'unavailable' | 'gone' | 'hostCannotOpen'
@@ -61,8 +48,7 @@ export const structuredSessionOpenFeedback: Pick<
       )
     )
   },
-  // Why a second message: once reveal exists, a miss is no longer a timing problem the user can
-  // wait out, so telling them to retry sends them in a circle.
+  // A reveal refusal is terminal; retry advice would send the user in circles.
   gone: () => {
     toast.error(
       translate(
@@ -71,11 +57,7 @@ export const structuredSessionOpenFeedback: Pick<
       )
     )
   },
-  // Separate from `gone` because the chat is not gone: something about this pairing cannot open
-  // it — a host too old to know the method, adapters that do not cover the provider, or a version
-  // block that can name EITHER side. Naming a machine here would point half of those at the wrong
-  // one, so the message names the remedy instead. Telling someone their work is lost when an
-  // update would bring it back is the worse of the two wrong answers.
+  // Name the update remedy without blaming a machine: either side or its adapter may be incompatible, and the chat still exists.
   hostCannotOpen: () => {
     toast.error(
       translate(
@@ -93,11 +75,7 @@ const defaultDeps: StructuredSessionActivationDeps = {
   ...structuredSessionOpenFeedback
 }
 
-/**
- * @param session anything carrying the row's structured pointer — an Agent Session History row or
- * the drag payload built from one. Only `structuredSession` is read, and both surfaces must reach
- * the same reveal, or the same row answers a click and a drop differently.
- */
+/** Read only structuredSession so history clicks and drag payloads follow the same reveal path. */
 export async function activateAiVaultStructuredSession(
   session: Pick<AiVaultSession, 'structuredSession'>,
   deps: StructuredSessionActivationDeps = defaultDeps,
@@ -107,17 +85,12 @@ export async function activateAiVaultStructuredSession(
   if (!structured) {
     return false
   }
-  // Why: the click can chain a refresh, a capability probe, a reveal and a second refresh, each
-  // with its own timeout, and nothing on the row says it is working. Without this, an impatient
-  // second click runs the whole sequence again and lands its own toast.
+  // Coalesce clicks across refresh/probe/reveal timeouts to avoid duplicate sequences and toasts.
   const hostKey = executionHostIdForStructuredTarget(
     target ??
-      getActiveRuntimeTarget({
-        activeRuntimeEnvironmentId: getRuntimeEnvironmentIdForWorktree(
-          useAppStore.getState(),
-          structured.workspaceId
-        )
-      })
+      runtimeTargetForOwnerEnvironment(
+        runtimeEnvironmentIdOrLocalUnlessTwin(useAppStore.getState(), structured.workspaceId)
+      )
   )
   const key = `${hostKey}\0${structured.workspaceId}\0${structured.sessionId}`
   const inFlight = activationsInFlight.get(key)
@@ -146,13 +119,10 @@ async function activateStructuredSession(
     ...(host ? { target: host } : {})
   }
   if (!deps.activate(target)) {
-    // A refresh alone can answer, and costs one call instead of two. It is only ever an
-    // optimization, so a refresh that fails must fall through to the reveal rather than end the
-    // click: the host republishing the tab is the repair, and it does not need this to have worked.
+    // Refresh can avoid reveal, but failure must fall through: host republication is the actual repair.
     const refreshed = await refreshedWithoutThrowing(deps, structured.workspaceId, host)
     if (!refreshed || !deps.activate(target)) {
-      // The inventory genuinely does not carry this chat: it was closed, or this process never
-      // published it. Ask the host to republish the tab from the record it still holds on disk.
+      // Ask the host to republish a closed or unpublished tab from its persisted record.
       const revealed = await deps.reveal(target)
       if (revealed !== 'revealed') {
         if (revealed === 'gone') {
@@ -160,7 +130,6 @@ async function activateStructuredSession(
         } else if (revealed === 'host-cannot-open') {
           deps.hostCannotOpen()
         } else {
-          // Unreachable: we never got an answer, so this is the one case waiting can still fix.
           deps.unavailable()
         }
         return true
@@ -178,8 +147,7 @@ async function activateStructuredSession(
   return true
 }
 
-/** The inventory refresh is advisory at every call site here, so its failure is a `false`, never a
- *  thrown end to the click. */
+/** Refresh is advisory; failures return false so reveal can still proceed. */
 async function refreshedWithoutThrowing(
   deps: StructuredSessionActivationDeps,
   worktreeId: string,
@@ -193,12 +161,7 @@ async function refreshedWithoutThrowing(
   }
 }
 
-/**
- * Ask the host to republish a persisted chat's tab.
- *
- * Only `revealed` means the tab is on its way. The other three are all terminal for this click, and
- * they are kept apart because the remedy differs: retry, give up, or update the host.
- */
+/** Only revealed promises a tab; preserve distinct retry/missing/update outcomes for the other replies. */
 export async function revealStructuredSession(target: {
   worktreeId: string
   sessionId: string
@@ -206,21 +169,14 @@ export async function revealStructuredSession(target: {
 }): Promise<StructuredSessionRevealOutcome> {
   const host =
     target.target ??
-    getActiveRuntimeTarget({
-      activeRuntimeEnvironmentId: getRuntimeEnvironmentIdForWorktree(
-        useAppStore.getState(),
-        target.worktreeId
-      )
-    })
-  // Negotiated against the host that will answer this call, not the local one: a paired host runs
-  // its own build, and its method-not-found is indistinguishable from a refusal we should surface.
-  // A local host is this build, so it always has the method and needs no round trip to prove it.
+    runtimeTargetForOwnerEnvironment(
+      runtimeEnvironmentIdOrLocalUnlessTwin(useAppStore.getState(), target.worktreeId)
+    )
+  // Probe the answering paired host’s build; the local host shares this build and needs no probe.
   if (host.kind === 'environment') {
     let supported: boolean
     try {
-      // Raced, not merely given a timeout argument: on a cache hit this awaits a promise created
-      // by an earlier probe that may carry no deadline of its own, and one that never settles
-      // would hold this session's in-flight entry for the life of the process.
+      // Race even cached probe promises: an older unbounded probe must not hold the session’s in-flight guard forever.
       supported = await withStructuredSessionRestoreTimeout(
         runtimeEnvironmentSupportsCapability(
           host.environmentId,
@@ -229,9 +185,7 @@ export async function revealStructuredSession(target: {
         )
       )
     } catch (error) {
-      // A version block is the host's age, stated outright; anything else means we never got to
-      // ask, which is not evidence about the chat or the host. `remote-agent-session-launch`
-      // splits the same probe's failures the same way.
+      // Only a version block proves age; other probe failures say nothing about the chat (as in remote-agent-session-launch).
       return isRuntimeCompatBlockError(error) ? 'host-cannot-open' : 'unreachable'
     }
     if (!supported) {
@@ -256,8 +210,7 @@ export async function revealStructuredSession(target: {
   if (result?.ok === true) {
     return 'revealed'
   }
-  // The host raises two different refusals here and they mean opposite things to a user: it holds
-  // no such record, or it holds one it cannot open. Only the first is the chat being gone.
+  // Distinguish a missing record from an existing record the host cannot open; only the first means gone.
   return result?.refusal?.code === 'agent_session_identity_required' ? 'gone' : 'host-cannot-open'
 }
 
@@ -270,26 +223,20 @@ async function refreshStructuredSessionTabs(
   const state = useAppStore.getState()
   const host =
     target ??
-    getActiveRuntimeTarget({
-      activeRuntimeEnvironmentId: getRuntimeEnvironmentIdForWorktree(state, worktreeId)
-    })
-  // Every other caller that applies an inventory fences it on the sync generation. Structured chat
-  // can be switched off while this call is in flight, which wipes the mirror; without this the
-  // answer would land afterwards and re-seed a chat row into a renderer that just discarded them.
-  const generation = localStructuredSessionGeneration()
-  const snapshot = await withStructuredSessionRestoreTimeout(
-    callRuntimeRpc<RuntimeMobileSessionTabsResult>(
+    runtimeTargetForOwnerEnvironment(runtimeEnvironmentIdOrLocalUnlessTwin(state, worktreeId))
+  if (host.kind === 'local') {
+    await withStructuredSessionRestoreTimeout(refreshLocalStructuredSessionWorktreeTabs(worktreeId))
+    return
+  }
+  // Paired inventories arrive through their existing host-scoped subscription.
+  await withStructuredSessionRestoreTimeout(
+    callRuntimeRpc(
       host,
       'session.tabs.list',
       { worktree: toRuntimeWorktreeSelector(worktreeId) },
       { timeoutMs: STRUCTURED_SESSION_RESTORE_TIMEOUT_MS }
     )
   )
-  if (host.kind !== 'local' || !isCurrentLocalStructuredSessionGeneration(generation)) {
-    return
-  }
-  // Paired inventories arrive through their existing host-scoped subscription.
-  applyStructuredSessionTabSnapshots([snapshot])
 }
 
 async function withStructuredSessionRestoreTimeout<T>(promise: Promise<T>): Promise<T> {

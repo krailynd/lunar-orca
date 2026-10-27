@@ -7,11 +7,10 @@ import {
   readRuntimeIssueCommand,
   type IssueCommandReadResult
 } from '@/runtime/runtime-hooks-client'
-import { getRuntimeEnvironmentIdForRepo } from './repo-runtime-owner'
 import { MODAL_DISMISSED_KEY } from '@/store/slices/modal-slot-dismissal'
 import {
   getRepoExecutionHostId,
-  parseExecutionHostId,
+  toRuntimeExecutionHostId,
   type ExecutionHostId
 } from '../../../shared/execution-host'
 
@@ -74,25 +73,28 @@ function findHookRepo(state: AppState, repoId: string, hostId?: ExecutionHostId)
     : state.repos.find((repo) => repo.id === repoId)
 }
 
-function settingsForHookRepoOwner(
+/** Inspect on the captured runtime owner, then explicit host, then repo owner; never substitute focused host, including server-owned SSH repos. */
+function hookRepoOwnerHostId(
   state: AppState,
   repoId: string,
   hostId?: ExecutionHostId,
   runtimeOwnerEnvironmentId?: string | null
-): AppState['settings'] {
-  const parsedHost = hostId ? parseExecutionHostId(hostId) : null
-  const runtimeEnvironmentId =
-    runtimeOwnerEnvironmentId?.trim() ||
-    (hostId
-      ? parsedHost?.kind === 'runtime'
-        ? parsedHost.environmentId
-        : null
-      : getRuntimeEnvironmentIdForRepo(state, repoId))
-  // Why: hook inspection must follow the repo owner. SSH/local repos execute
-  // through desktop IPC, while runtime repos may differ from the focused host.
-  return state.settings
-    ? { ...state.settings, activeRuntimeEnvironmentId: runtimeEnvironmentId }
-    : ({ activeRuntimeEnvironmentId: runtimeEnvironmentId } as AppState['settings'])
+): ExecutionHostId {
+  const ownerEnvironmentId = runtimeOwnerEnvironmentId?.trim()
+  if (ownerEnvironmentId) {
+    return toRuntimeExecutionHostId(ownerEnvironmentId)
+  }
+  const rows = hostId ? [] : state.repos.filter((entry) => entry.id === repoId)
+  // Why: with the id on two hosts, trusting one row's script could run the other's unseen.
+  if (rows.length > 1) {
+    throw new Error('The project exists on more than one host.')
+  }
+  const repo = rows[0] ?? null
+  const ownerHostId = hostId ?? (repo ? getRepoExecutionHostId(repo) : null)
+  if (!ownerHostId) {
+    throw new Error('The project host is unknown.')
+  }
+  return ownerHostId
 }
 
 function canUseRepoWideTrust(state: AppState, repoId: string): boolean {
@@ -215,11 +217,7 @@ export async function readAndConfirmRuntimeIssueCommand(
 ): Promise<ConfirmedRuntimeIssueCommand> {
   let result: IssueCommandReadResult
   try {
-    result = await readRuntimeIssueCommand(
-      settingsForHookRepoOwner(state, repoId, hostId),
-      repoId,
-      hostId
-    )
+    result = await readRuntimeIssueCommand(hookRepoOwnerHostId(state, repoId, hostId), repoId)
   } catch {
     result = {
       status: 'error',
@@ -234,7 +232,7 @@ export async function readAndConfirmRuntimeIssueCommand(
 }
 
 export async function ensureHooksConfirmed(
-  // Why a getter: a caller that queues behind an earlier prompt must see the trust it recorded.
+  // Read current trust when dequeued so earlier prompts’ decisions apply.
   stateOrGetter: AppState | (() => AppState),
   repoId: string,
   scriptKind: HookScriptKind,
@@ -254,13 +252,10 @@ export async function ensureHooksConfirmed(
     let scriptContent = ''
     try {
       if (scriptKind === 'issueCommand') {
-        // Local overrides are user-owned; only shared orca.yaml commands need repo trust.
-        // Why: hostId disambiguates duplicate repo ids on the local IPC path,
-        // matching the checkRuntimeHooks call below.
+        // Only shared orca.yaml needs repo trust; user-owned overrides do not. Pass hostId to disambiguate same-ID repos, as checkRuntimeHooks does.
         const result = await readRuntimeIssueCommand(
-          settingsForHookRepoOwner(state, repoId, hostId, runtimeOwnerEnvironmentId),
-          repoId,
-          hostId
+          hookRepoOwnerHostId(state, repoId, hostId, runtimeOwnerEnvironmentId),
+          repoId
         )
         if (result.source === 'local') {
           return 'run'
@@ -285,9 +280,8 @@ export async function ensureHooksConfirmed(
           return 'run'
         }
         const result = await checkRuntimeHooks(
-          settingsForHookRepoOwner(state, repoId, hostId, runtimeOwnerEnvironmentId),
-          repoId,
-          hostId
+          hookRepoOwnerHostId(state, repoId, hostId, runtimeOwnerEnvironmentId),
+          repoId
         )
         if (result.status === 'error') {
           return 'skip'

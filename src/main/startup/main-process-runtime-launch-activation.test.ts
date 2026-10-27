@@ -14,7 +14,6 @@ const launchHooks = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({ app: electronApp, powerMonitor: { on: vi.fn() } }))
-vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
 vi.mock('../orca-profiles/profile-cloud-auth-config', () => ({
   getOrcaCloudAuthConfig: () => ({ configured: false })
 }))
@@ -30,6 +29,7 @@ vi.mock('../runtime/runtime-rpc', () => ({
       launchOrder.push('rpc-start')
     })
     setOnUnpairedDeviceAuthFailure = vi.fn()
+    setMobileDesktopRelayHosts = vi.fn()
   }
 }))
 vi.mock('../runtime/headless-runtime-graph', () => ({ publishHeadlessRuntimeGraph: vi.fn() }))
@@ -39,10 +39,11 @@ vi.mock('./headless-serve-ssh-registration', () => ({
   })
 }))
 vi.mock('../ipc/mobile', () => ({ registerMobileHandlers: vi.fn() }))
-vi.mock('../ipc/pty', () => ({
-  getLocalPtyProvider: vi.fn(),
-  registerHeadlessPtyRuntime: vi.fn()
+vi.mock('../ipc/runtime-environments/runtime-environment-mobile-relay-hosts', () => ({
+  createRuntimeEnvironmentMobileRelayHosts: vi.fn()
 }))
+vi.mock('../ipc/pty/provider/registry', () => ({ getLocalPtyProvider: vi.fn() }))
+vi.mock('../ipc/pty/register-headless-runtime', () => ({ registerHeadlessPtyRuntime: vi.fn() }))
 vi.mock('../providers/local-pty-provider', () => ({ LocalPtyProvider: class {} }))
 vi.mock('../browser/offscreen-browser-backend', () => ({ OffscreenBrowserBackend: class {} }))
 vi.mock('../browser/browser-manager', () => ({ browserManager: {} }))
@@ -50,7 +51,7 @@ vi.mock('./main-process-relay-status', () => ({
   getDesktopRelayStatus: vi.fn(),
   publishDesktopRelayStatus: vi.fn()
 }))
-vi.mock('../runtime/relay/desktop-relay-service', () => ({ DesktopRelayService: class {} }))
+vi.mock('./main-process-relay-startup', () => ({ startDesktopRelayService: vi.fn() }))
 vi.mock('./main-process-serve', () => ({
   getServeOptions: vi.fn(() => null),
   getBundledWebClientRoot: vi.fn(() => null),
@@ -65,7 +66,7 @@ vi.mock('./main-process-pty-startup', () => ({
 vi.mock('./codex-launch-preparation', () => ({ prepareCodexRuntimeHomeForLaunch: vi.fn() }))
 vi.mock('./codex-session-resume-launch', () => ({ prepareCodexSessionResumeForLaunch: vi.fn() }))
 vi.mock('./windows-install-dir-acl-recovery', () => ({
-  // The awaited gap before the first window, where a second-instance launch can land.
+  // Model the awaited repair gap in which a second-instance activation can arrive.
   repairKnownPoisonedInstallDirBeforeWindow: vi.fn(async () => {
     launchHooks.duringInstallDirRepair()
     if (launchHooks.failBeforeWindow) {
@@ -88,6 +89,8 @@ vi.mock('../ipc/startup-notification-registration', () => ({
 }))
 vi.mock('./main-process-push-startup', () => ({ startDesktopPushService: vi.fn() }))
 vi.mock('./startup-diagnostics', () => ({ logStartupMilestone: vi.fn() }))
+const setupHeadlessServeAutoUpdater = vi.hoisted(() => vi.fn())
+vi.mock('../window/main-window-updater', () => ({ setupHeadlessServeAutoUpdater }))
 vi.mock('../server/serve-stdout-boundary', () => ({ emitServeBrowserIdentityActionLine: vi.fn() }))
 vi.mock('../browser/browser-identity-mode-store', () => ({
   getBrowserIdentityModeStatus: vi.fn()
@@ -98,6 +101,14 @@ vi.mock('../window/foreground-activation-policy', () => ({
   isWindowlessLaunch: () => false,
   showWindowWithoutStealingFocus
 }))
+vi.mock('../tray/system-tray', () => ({
+  createSystemTray: vi.fn(),
+  setMacMenuBarIconVisible: vi.fn()
+}))
+vi.mock('../window/attach-main-window-services', () => ({ ensureAutoUpdaterConfigured: vi.fn() }))
+vi.mock('../window/dashboard-popout-window', () => ({ getDashboardPopoutWindow: () => null }))
+vi.mock('../window/createMainWindow', () => ({ loadMainWindow: vi.fn() }))
+vi.mock('../window/renderer-recovery-prompt', () => ({ presentRendererRecoveryPrompt: vi.fn() }))
 
 vi.mock('./main-process-ready-foundation', () => ({
   initializeReadyFoundation: vi.fn(async () => {})
@@ -142,7 +153,7 @@ describe('desktop startup activation', () => {
   let firstLoadListeners: (() => void)[]
   const startupSettled = vi.fn()
 
-  // Mirrors openMainWindow's non-idempotent side effects that broke in the field.
+  // Retain non-idempotent window effects that exposed duplicate startup in production.
   function openMainWindow(): FakeWindow {
     const id = windows.length + 1
     const window: FakeWindow = {
@@ -192,7 +203,6 @@ describe('desktop startup activation', () => {
       whenReady: () => Promise.resolve()
     } as unknown as NonNullable<typeof state.windowsShellPathHydration>
     state.initialProxyApplicationReady = Promise.resolve()
-    // Built the way preflight builds it for a desktop launch.
     state.desktopActivationGate = createServeDesktopActivationGate({
       initialState: 'initializing',
       activateWindow: () =>
@@ -298,7 +308,7 @@ describe('desktop startup activation', () => {
 
     expect(windows).toHaveLength(0)
     expect(launchOrder).toEqual(['ssh-registered', 'rpc-start'])
-    // Signals mark their quit, so the macOS native-quit guard lets them through (#15537).
+    // Signal intent must pass the macOS native-quit guard (#15537).
     expect(registerServeSignalHandlers).toHaveBeenCalledWith(process, quitProcess)
     expect(installServeNativeQuitGuard).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -306,5 +316,60 @@ describe('desktop startup activation', () => {
         closeDesktopWindows: quitFromUserCommand
       })
     )
+  })
+  it('saves Codex auth before a headless serve update restart, like the desktop does', async () => {
+    setupHeadlessServeAutoUpdater.mockClear()
+    state.isServeMode = true
+    vi.mocked(getServeOptions).mockReturnValueOnce({
+      json: false,
+      pairingAddress: null,
+      noPairing: true,
+      mobilePairing: false,
+      grantDesktopControl: false,
+      recipeJson: false,
+      projectRoot: null
+    })
+    Object.assign(state.runtime!, {
+      refreshRestoredOrchestrationAuthority: vi.fn(async () => {}),
+      reconcileLegacyWorkerTerminals: vi.fn(async () => {})
+    })
+    const order: string[] = []
+    const store = {
+      flushPendingOrThrowAsync: vi.fn(async (options?: { fullCheckpoint?: boolean }) => {
+        order.push(options?.fullCheckpoint ? 'store-checkpoint' : 'store-flush')
+      })
+    }
+    const codexRuntimeHome = {
+      syncForCurrentSelection: vi.fn(() => {
+        order.push('codex-auth')
+      }),
+      syncActiveWslSelectionsBeforeRestart: vi.fn(async () => {})
+    }
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the update restart hook only flushes the store.
+    state.store = store as unknown as NonNullable<typeof state.store>
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the update restart hook only calls the two sync methods.
+    state.codexRuntimeHome = codexRuntimeHome as unknown as NonNullable<
+      typeof state.codexRuntimeHome
+    >
+    try {
+      await initializeMainProcessReady({
+        openMainWindow: () => {
+          throw new Error('serve must not open a window')
+        },
+        handleMacAppActivation: vi.fn()
+      })
+
+      expect(setupHeadlessServeAutoUpdater).toHaveBeenCalledTimes(1)
+      const hooks = setupHeadlessServeAutoUpdater.mock.calls[0][1]
+      expect(hooks.onBeforeUpdateQuitFailure).toBe('abort')
+      await hooks.onBeforeUpdateQuit()
+      expect(codexRuntimeHome.syncForCurrentSelection).toHaveBeenCalledTimes(1)
+      expect(codexRuntimeHome.syncActiveWslSelectionsBeforeRestart).toHaveBeenCalledTimes(1)
+      expect(order.at(0)).toBe('codex-auth')
+      expect(order.at(-1)).toBe('store-checkpoint')
+    } finally {
+      state.store = null
+      state.codexRuntimeHome = null
+    }
   })
 })

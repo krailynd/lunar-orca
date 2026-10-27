@@ -12,14 +12,6 @@ export const PALETTE_MATCH_QUALITIES = [
 
 export type PaletteMatchQuality = (typeof PALETTE_MATCH_QUALITIES)[number]
 
-const QUALITY_RANK = new Map<PaletteMatchQuality, number>(
-  PALETTE_MATCH_QUALITIES.map((quality, index) => [quality, index])
-)
-
-export function paletteMatchQualityRank(quality: PaletteMatchQuality): number {
-  return QUALITY_RANK.get(quality) ?? PALETTE_MATCH_QUALITIES.length
-}
-
 export function isFuzzyPaletteMatchQuality(quality: PaletteMatchQuality): boolean {
   return quality === 'typo'
 }
@@ -32,10 +24,7 @@ export function isPrefixOrBoundaryPaletteMatchQuality(quality: PaletteMatchQuali
   return quality === 'field-prefix' || quality === 'word-prefix' || quality === 'boundary-substring'
 }
 
-/**
- * Coarse cross-section strength used only to decide which palette section leads.
- * Kept small on purpose so sections never compare raw domain-specific scores.
- */
+/** Compare sections using coarse shared strengths; raw domain scores are not comparable. */
 export const PALETTE_RESULT_QUALITY_CLASSES = [
   'exact-intent',
   'exact-visible',

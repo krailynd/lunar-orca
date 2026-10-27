@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getRuntimeGitStatus } from './runtime-git-client'
+import { getRuntimeGitStatus } from './runtime-git-status-client'
 import {
   createCompatibleRuntimeStatusResponseIfNeeded,
   type RuntimeEnvironmentCallRequest
@@ -45,7 +45,7 @@ afterEach(() => {
 describe('branch line total merge base on git status requests', () => {
   it('forwards the merge base to local git status only when the chip asked for it', async () => {
     const context = {
-      settings: { activeRuntimeEnvironmentId: null },
+      target: { kind: 'local' as const },
       worktreeId: 'wt-1',
       worktreePath: '/repo'
     }
@@ -72,7 +72,7 @@ describe('branch line total merge base on git status requests', () => {
   it('forwards the merge base through the active runtime environment', async () => {
     await getRuntimeGitStatus(
       {
-        settings: { activeRuntimeEnvironmentId: 'env-1' },
+        target: { kind: 'environment' as const, environmentId: 'env-1' },
         worktreeId: 'wt-1',
         worktreePath: '/repo'
       },
@@ -88,10 +88,9 @@ describe('branch line total merge base on git status requests', () => {
   })
 
   it('omits the merge base param entirely for a remote status with no visible chip', async () => {
-    // Why: Rule-1 wire safety — an old server must see the exact params it
-    // already understands, and a hidden chip must not cost a remote diff.
+    // Old hosts need unchanged params; hidden chips must cost no remote diff (Rule 1).
     await getRuntimeGitStatus({
-      settings: { activeRuntimeEnvironmentId: 'env-1' },
+      target: { kind: 'environment' as const, environmentId: 'env-1' },
       worktreeId: 'wt-1',
       worktreePath: '/repo'
     })
@@ -107,7 +106,7 @@ describe('branch line total merge base on git status requests', () => {
   it('keeps the merge base alongside reuse and cache-bypass flags', async () => {
     await getRuntimeGitStatus(
       {
-        settings: { activeRuntimeEnvironmentId: 'env-1' },
+        target: { kind: 'environment' as const, environmentId: 'env-1' },
         worktreeId: 'wt-1',
         worktreePath: '/repo'
       },

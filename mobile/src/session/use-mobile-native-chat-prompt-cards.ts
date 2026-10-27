@@ -3,7 +3,6 @@ import type { useMobileStructuredAgentSession } from './use-mobile-structured-ag
 import { useNativeChatAcceptedAction } from './use-native-chat-action-outcomes'
 import { useMobileNativeChatPromptPresentation } from './use-mobile-native-chat-prompt-presentation'
 
-/** Select the lane's existing card actions and apply terminal-only presentation dismissal. */
 export function useMobileNativeChatPromptCards({
   terminal,
   structured,
@@ -12,7 +11,7 @@ export function useMobileNativeChatPromptCards({
   terminal: Parameters<typeof useMobileNativeChatPromptPresentation>[0]
   structured: Pick<
     ReturnType<typeof useMobileStructuredAgentSession>,
-    'permission' | 'question' | 'respondPermission' | 'respondQuestion' | 'cancelPrompt'
+    'permission' | 'question' | 'respondPermission' | 'respondQuestion' | 'cancelPrompt' | 'turnId'
   > | null
   onSendResolved: () => void
 }): Pick<
@@ -46,7 +45,8 @@ export function useMobileNativeChatPromptCards({
     handleNativeChatQuestionAnswer: structured
       ? structured.respondQuestion
       : presentation.answerQuestion,
-    handleNativeChatCancelPrompt: structured ? cancel : undefined,
+    // A card's X stops its turn; a Pi dialog can open with no turn running, and then nothing can.
+    handleNativeChatCancelPrompt: structured?.turnId ? cancel : undefined,
     collapseNativeChatPrompt: structured ? undefined : presentation.collapsePrompt,
     nativeChatCollapsedPrompt: structured ? null : presentation.collapsed
   }

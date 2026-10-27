@@ -6,8 +6,17 @@ import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { Repo } from '../../../../shared/repo-types'
 
 vi.mock('@/components/agent/AgentCombobox', () => ({
-  default: ({ value }: { value: string | null }) =>
-    React.createElement('div', { 'data-agent-value': value ?? '' })
+  default: ({
+    value,
+    allowBlankTerminal
+  }: {
+    value: string | null
+    allowBlankTerminal?: boolean
+  }) =>
+    React.createElement('div', {
+      'data-agent-value': value ?? '',
+      'data-allow-blank': String(allowBlankTerminal === true)
+    })
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -110,6 +119,10 @@ describe('SourceControlAgentActionDialogForm', () => {
     expect(markup).toContain('Resolve the merge conflicts reported for this pull request.')
   })
 
+  it('offers agents only, since an action cannot start without one', () => {
+    expect(renderForm()).toContain('data-allow-blank="false"')
+  })
+
   it('checks already-saved copy against the selected save target', () => {
     const settings = settingsWithSavedGlobalRecipe()
     const saveTargets = [
@@ -170,8 +183,7 @@ describe('CLI arguments field applicability', () => {
     expect(markup).toContain('CLI arguments')
   })
 
-  // Why: absent, not disabled — a structured native chat session reads no CLI arguments,
-  // so the dialog must not show a control that launch would drop.
+  // Native chat launches ignore CLI arguments, so omit the field.
   it('leaves the field out entirely when they would not apply', () => {
     const markup = renderForm({ agentArgsApply: false })
 

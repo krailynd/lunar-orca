@@ -2,13 +2,8 @@ import { createElement, Fragment, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import type { ResumeFailure } from './native-chat-resume-on-restart-grouping'
+import { INLINE_ACTION_CLASS_NAMES } from './ui/sonner'
 
-/**
- * The one toast a resume raises, clicked or automatic at launch: what it did across chats that are
- * mostly off-screen. Each chat's own note stays the record of what happened to it.
- */
-
-/** One `continued` row as the host reports it. */
 export type RestartContinuationOutcome = {
   sessionId: string
   outcome: 'continued' | 'pending' | 'unknown' | 'refused'
@@ -75,41 +70,56 @@ function descriptionFrom(lines: readonly string[]): ReactNode {
       )
 }
 
-/** One toast per resume; Show opens the run summary. Unconfirmed chats may already be working. */
+// A lone title centres with the taller button; a description keeps the icon on the title's line.
+const ONE_LINE_INLINE_ACTION_CLASS_NAMES = {
+  ...INLINE_ACTION_CLASS_NAMES,
+  toast: '!items-center',
+  icon: '!mt-0'
+}
+
+/** One toast per resume, its action named for what it opens. Unconfirmed chats may already be working. */
 function announceResume(
   continued: number,
   refused: number,
   unconfirmed: number,
   show: (() => Promise<void>) | undefined
 ): void {
-  const action =
-    show === undefined
+  const settled = refused === 0 && unconfirmed === 0
+  if (settled && continued === 0) {
+    return
+  }
+  const lines = settled
+    ? []
+    : [
+        ...(refused > 0 && unconfirmed > 0 ? [otherUnconfirmedCountText(unconfirmed)] : []),
+        ...(continued > 0 ? [continuedCountText(continued)] : [])
+      ]
+  const options = {
+    ...(lines.length === 0 ? {} : { description: descriptionFrom(lines) }),
+    ...(show === undefined
       ? {}
       : {
+          classNames:
+            lines.length === 0 ? ONE_LINE_INLINE_ACTION_CLASS_NAMES : INLINE_ACTION_CLASS_NAMES,
           action: {
-            label: translate('auto.components.NativeChatResumeOnRestartModal.show', 'Show'),
+            label: settled
+              ? translate('auto.components.NativeChatResumeOnRestartModal.viewChats', 'View chats')
+              : translate('auto.components.NativeChatResumeOnRestartModal.review', 'Review'),
             onClick: () => void show()
           }
-        }
-  if (refused === 0 && unconfirmed === 0) {
-    if (continued > 0) {
-      toast(continuedCountText(continued), action)
-    }
+        })
+  }
+  if (settled) {
+    toast.success(continuedCountText(continued), options)
     return
   }
   const title = refused > 0 ? refusedCountText(refused) : unconfirmedCountText(unconfirmed)
-  const lines = [
-    ...(refused > 0 && unconfirmed > 0 ? [otherUnconfirmedCountText(unconfirmed)] : []),
-    ...(continued > 0 ? [continuedCountText(continued)] : [])
-  ]
-  toast(title, {
-    ...(lines.length === 0 ? {} : { description: descriptionFrom(lines) }),
-    ...action
-  })
+  // An unconfirmed chat may be working, so only a refusal reads as an error.
+  const notify = refused > 0 ? toast.error : toast.warning
+  notify(title, options)
 }
 
-/** Which of the requested chats the host did not carry on: refused, unconfirmed, or — since
- *  eligibility can change after listing — omitted from the answer altogether. */
+/** Include requested chats refused, unconfirmed or omitted because eligibility changed after listing. */
 export function restartChatsNotContinued(
   requested: readonly string[],
   results: readonly RestartContinuationOutcome[]
@@ -146,28 +156,24 @@ export function announceRestartResults(
   /** Opens the dialog over a fresh read; never rejects. */
   show: () => Promise<void>
 ): void {
-  const results = restartContinuationHistory(requested, reportedResults, hostFailed)
+  const results =
+    reportedResults ?? requested.map((sessionId) => ({ sessionId, outcome: 'unknown' as const }))
   const notContinued = restartChatsNotContinued(requested, results)
   const failed = new Map(hostFailed?.map((failure) => [failure.sessionId, failure.outcome]))
-  // A host that lists failures has already dropped chats that moved on by themselves or that the
-  // user answered; counting those would report a failure nothing on screen can show.
-  const reported =
-    hostFailed === undefined
-      ? notContinued
-      : notContinued.filter((sessionId) => failed.has(sessionId))
   const outcomes = new Map(results.map((result) => [result.sessionId, result.outcome]))
   const sentUnconfirmed = (sessionId: string): boolean =>
     outcomes.get(sessionId) === 'pending' || outcomes.get(sessionId) === 'unknown'
-  // The filed outcome is what the list shows, so the toast uses it too.
-  const unconfirmed = (sessionId: string): boolean =>
-    (failed.get(sessionId) ?? (sentUnconfirmed(sessionId) ? 'unconfirmed' : 'refused')) ===
-    'unconfirmed'
-  const unconfirmedCount = reported.filter(unconfirmed).length
+  const reported =
+    hostFailed === undefined
+      ? notContinued
+      : notContinued.filter((sessionId) => failed.has(sessionId) || sentUnconfirmed(sessionId))
+  // Only normalized action outcomes settle delivery; a host list is an observation.
+  const unconfirmedCount = reported.filter(sentUnconfirmed).length
   const continuedCount = new Set(requested).size - notContinued.length
   announceResume(
     continuedCount,
     reported.length - unconfirmedCount,
     unconfirmedCount,
-    hostFailed === undefined && continuedCount === 0 ? undefined : show
+    hostFailed === undefined && continuedCount === 0 && unconfirmedCount === 0 ? undefined : show
   )
 }

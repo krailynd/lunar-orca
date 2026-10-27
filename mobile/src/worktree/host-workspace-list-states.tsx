@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { colors, spacing, typography } from '../theme/mobile-theme'
+import { isConnectionOutage, verdictDisplayLabel } from '../transport/connection-health'
 import {
   selectHostWorkspaceListState,
   type HostWorkspaceListStateInput
@@ -19,6 +20,18 @@ export function HostWorkspaceListStates(
       </View>
     )
   }
+  if (state === 'unreachable') {
+    const { connectionVerdict } = props
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.emptyText}>{verdictDisplayLabel(connectionVerdict)}</Text>
+        <Text style={styles.catalogErrorDetail}>
+          {(isConnectionOutage(connectionVerdict) ? connectionVerdict.detail : undefined) ??
+            'Check that your computer is awake and Orca is running'}
+        </Text>
+      </View>
+    )
+  }
   if (state === 'catalog-error') {
     return (
       <View style={styles.centered}>
@@ -34,10 +47,10 @@ export function HostWorkspaceListStates(
       <View style={styles.centered}>
         <Text style={styles.emptyText}>
           {props.search
-            ? 'No matching worktrees'
+            ? 'No matching workspaces'
             : props.activeFilterCount > 0
-              ? 'No worktrees match filters'
-              : 'No worktrees'}
+              ? 'No workspaces match filters'
+              : 'No workspaces'}
         </Text>
       </View>
     )
@@ -45,11 +58,27 @@ export function HostWorkspaceListStates(
   return null
 }
 
+/** A list this page cannot build; shown above the rows it already holds, so it never blanks. */
+export function HostWorkspaceListReopen({ aboveRows }: { aboveRows: boolean }) {
+  return (
+    <View style={aboveRows ? styles.aboveRows : styles.centered}>
+      <Text style={styles.emptyText}>Reopen to update</Text>
+      <Text style={styles.catalogErrorDetail}>
+        This host lists workspaces in a way this page does not know yet.
+      </Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  aboveRows: {
+    alignItems: 'center',
+    paddingVertical: spacing.md
   },
   emptyText: {
     color: colors.textSecondary,

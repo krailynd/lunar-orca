@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Bot, CalendarRange, FolderKanban, Plus, Sparkles, Trash2, X } from 'lucide-react'
-import type { TaskPageComposerActionsModel } from '../use-task-page-composer-actions'
+import type { TaskPageComposerActionsModel } from './use-task-page-composer-actions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../shared/constants'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { ChatSettingsSection } from './ChatSettingsSection'
+import { TooltipProvider } from '../ui/tooltip'
 import { ActiveSettingsSectionProvider } from './SettingsSection'
 import { getChatInlineVisualsSearchEntry } from './chat-inline-visuals-search'
 import { matchesSettingsSearch } from './settings-search'
@@ -15,6 +16,7 @@ const state = vi.hoisted((): { settingsSearchQuery: string; settings: GlobalSett
   settingsSearchQuery: '',
   settings: null
 }))
+vi.mock('@/lib/host-chat-program-acquisition', () => ({ useChatProgramFacts: () => {} }))
 vi.mock('../../store', () => ({
   useAppStore: Object.assign((selector: (value: typeof state) => unknown) => selector(state), {
     getState: () => state
@@ -45,7 +47,8 @@ function renderChat(nativeChatInlineVisuals: boolean | undefined) {
           showDesktopOnlySettings
           isMounted
         />
-      </ActiveSettingsSectionProvider>
+      </ActiveSettingsSectionProvider>,
+      { wrapper: TooltipProvider }
     ),
     updateSettings
   }

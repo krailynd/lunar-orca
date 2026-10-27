@@ -1,20 +1,16 @@
-// Opening the agent a chat message is from: its chat through the open-chat flow, or its terminal
-// through the terminal-handle link's path. Feedback is chosen by what the host found, never by how
-// the sender was addressed, and uses words that already exist.
+// Open the sender through chat or terminal-handle routes; choose feedback from the answering host’s evidence, never the sender’s address shape.
 
 import { toast } from 'sonner'
-import type { AgentMessageSource } from '../../../shared/agent-session-message-source'
+import type { AgentMessageSource } from '../../../shared/agent-session/agent-session-message-source'
 import { agentSessionWriteNoticeText } from '@/components/native-chat/agent-session-write-notice-text'
 import type {
   OrchestrationPartyLocation,
   OrchestrationPartyLocationResult
 } from '../../../shared/orchestration-caller-status'
 import { useAppStore } from '@/store'
-import {
-  callRuntimeRpc,
-  RuntimeRpcCallError,
-  type RuntimeClientTarget
-} from '@/runtime/runtime-rpc-client'
+import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
+import { RuntimeRpcCallError } from '@/runtime/runtime-rpc-result'
+import type { RuntimeClientTarget } from '../../../shared/runtime-client-target'
 import { isRuntimeCompatBlockError } from '@/runtime/runtime-protocol-compat'
 import {
   focusRendererTerminalHandle,
@@ -34,8 +30,7 @@ import {
 } from '@/runtime/structured-agent-session-owner'
 
 type Sender = AgentMessageSource['senders'][number]
-/** `older-host`: the chat's host predates the lookup. `update`: one side is too old, either one.
- *  `unreachable`: no answer at all. */
+/** older-host identifies the chat host; update may mean either side, and unreachable proves nothing. */
 type LookupFailure = 'older-host' | 'update' | 'unreachable'
 type Lookup = OrchestrationPartyLocationResult | LookupFailure
 
@@ -49,8 +44,7 @@ const TERMINAL_GONE_CODES = new Set([
 
 const opensInFlight = new Map<string, Promise<void>>()
 
-/** `chatWorktreeId`: the chat showing the message. The sender lives on that chat's host, so every
- *  call goes to that host. */
+/** Route all sender lookups to the host of the chat displaying the message. */
 export function openAgentMessageSender(
   source: AgentMessageSource,
   sender: Sender,
@@ -91,8 +85,7 @@ async function openSender(
   host: RuntimeClientTarget
 ): Promise<void> {
   const environmentId = host.kind === 'environment' ? host.environmentId : null
-  // The mail it carried from this sender, whose pane outlives a handle from an earlier run. A task
-  // carries no mail, so its coordinator is found by address alone.
+  // Mail identifies senders beyond old terminal handles; tasks carry no mail and resolve coordinators by address.
   const mail = source.orchestration?.message === 'mail-notice' ? source.orchestration.messages : []
   const messageIds = mail
     .filter((message) => message.from === party.address)
@@ -163,8 +156,7 @@ async function lookUpSender(
   }
 }
 
-/** A host before the lookup: a chat open here under its root id, as one never `/clear`ed is, or a
- *  terminal by its handle; anything else needs that host updated. */
+/** Older hosts allow root-ID chats and terminal-handle opens; other identities require updating that host. */
 function lookUpOnOlderHost(party: Sender['party'], host: RuntimeClientTarget): Lookup {
   const sessionId = party.orcaSessionId
   if (sessionId) {
@@ -195,7 +187,6 @@ function located(location: OrchestrationPartyLocation): OrchestrationPartyLocati
   return { location }
 }
 
-/** Words for a sender of any kind, each sentence translated whole as write notices are. */
 function showLookupFailure(failure: LookupFailure): void {
   toast.error(
     agentSessionWriteNoticeText(

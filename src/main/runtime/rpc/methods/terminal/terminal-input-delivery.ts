@@ -16,7 +16,7 @@ export function isTerminalInputLockedForClient(
   if (client?.type === 'mobile') {
     return false
   }
-  // Why: pre-refactor mobile builds sent no client metadata, so treat a missing client as legacy mobile (unlocked).
+  // Missing client metadata means legacy mobile with unlocked input.
   if (!client) {
     return false
   }
@@ -27,7 +27,7 @@ export async function assertTerminalSendTextWithinLimit(text: string | undefined
   if (!text) {
     return
   }
-  // Why: sends can be paste-sized; validate outside Zod so large input yields before runtime dispatch.
+  // Validate paste-sized payloads outside Zod so large requests yield before dispatch.
   if (await isTerminalInputTooLargeWithYield(text, TERMINAL_INPUT_MAX_BYTES)) {
     throw new InvalidArgumentError(TERMINAL_INPUT_TOO_LARGE_ERROR)
   }
@@ -48,7 +48,7 @@ export function resolveMobileFloorClientId(
 
 export type TerminalStreamInputOutcome = 'delivered' | 'rejected' | 'failed'
 
-export function isTerminalStreamInputRejection(error: unknown): boolean {
+function isTerminalStreamInputRejection(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return message.includes('terminal_not_writable') || message.includes('terminal_handle_stale')
 }
@@ -69,24 +69,21 @@ export async function sendTerminalStreamInput(
   const floorClaim: MobileInputFloorClaimHolder = { current: null }
   const settlement = args.requireWriteSettlement ? { requireWriteSettlement: true as const } : {}
   try {
-    if (!clientId) {
-      const result = await runtime.sendTerminal(args.terminal, action, {
-        inputKind: 'driving',
-        ...settlement
-      })
-      return streamInputOutcome(result)
-    }
     const result = await runtime.sendTerminal(args.terminal, action, {
       inputKind: 'driving',
       ...settlement,
-      reserveWrite: (writePtyId) => {
-        const claim = runtime.beginMobileInputFloor(writePtyId, clientId)
-        if (!claim) {
-          throw new Error('mobile_input_floor_unavailable')
-        }
-        floorClaim.current = claim
-      },
-      afterWrite: () => commitMobileInputFloorClaim(floorClaim)
+      ...(clientId
+        ? {
+            reserveWrite: (writePtyId: string) => {
+              const claim = runtime.beginMobileInputFloor(writePtyId, clientId)
+              if (!claim) {
+                throw new Error('mobile_input_floor_unavailable')
+              }
+              floorClaim.current = claim
+            },
+            afterWrite: () => commitMobileInputFloorClaim(floorClaim)
+          }
+        : {})
     })
     const outcome = streamInputOutcome(result)
     if (outcome === 'rejected') {
@@ -121,7 +118,7 @@ export async function commitMobileInputFloorClaim(
   try {
     await current.commit()
   } finally {
-    // Why: the runtime may yield before the next write, which then needs a fresh reservation if desktop reclaimed the floor.
+    // After runtime yields, reserve again if desktop reclaimed the floor before the next write.
     if (claim.current === current) {
       claim.current = null
     }

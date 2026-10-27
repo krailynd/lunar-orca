@@ -4,19 +4,19 @@ import { basename, join } from 'node:path'
 import { getAppEnvironment } from '../../shared/app-environment'
 import { waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import type { ServerTarget } from '../../shared/node-runtime-pin'
-import { RELAY_OPENCODE_SQLITE_READER_FILENAME } from '../../shared/relay-artifacts'
+import { OPENCODE_SQLITE_READER_FILENAME } from '../../shared/remote-bundle-artifacts'
 import { parseWslUncPath, toWindowsWslUncPath } from '../../shared/wsl-paths'
 import { NODE_SQLITE_READER_API_SOURCE } from '../sqlite/node-sqlite-reader-api'
 import { relayBundleCandidates } from '../ssh/relay-bundle-paths'
-import { materializeNodeRuntimeArchive } from '../ssh/pinned-runtime-materializer'
-import { parseOrcadLinuxLibc } from '../ssh/orcad-deployment-target'
+import { materializeNodeRuntimeArchive } from '../node-runtime/pinned-runtime-materializer'
+import { probeLinuxLibc } from '../node-runtime/linux-libc-probe'
 import {
   installNodeRuntimeFromHostArchiveCommand,
   nodeRuntimeStoreDir,
   posixNodeRuntimeExecutable,
-  probeRemoteNodeRuntimeCommand,
-  REMOTE_NODE_RUNTIME_READY
-} from '../ssh/orcad-remote-node-runtime'
+  probeRemoteNodeRuntimeCommand
+} from '../managed-server/install/orcad-remote-node-runtime'
+import { REMOTE_NODE_RUNTIME_READY } from '../ssh/orcad-remote-node-runtime-report'
 import { getRemoteHostPlatform } from '../ssh/ssh-remote-platform'
 import { runWslProcess, type WslSpec } from '../wsl/wsl-runner'
 import { filterPathsToRunningWslDistrosAsync } from '../wsl-running-path-filter'
@@ -27,7 +27,7 @@ const downloads = new Map<ServerTarget, Promise<string>>()
 const PREPARATION_TIMEOUT_MS = 180_000
 const SQLITE_PROBE = `const sqlite=require('node:sqlite');if(!(${NODE_SQLITE_READER_API_SOURCE})(sqlite))throw Error('SQLite reader API missing');const db=new sqlite.DatabaseSync(':memory:');db.prepare('SELECT 1').get();db.close();process.stdout.write(process.execPath)`
 
-/** Only running distro roots enter here; a slow first install must not hold up local history. */
+/** Prepare running distros without letting a slow first install block local history. */
 export async function prepareOpenCodeWslReaders(
   roots: readonly string[]
 ): Promise<OpenCodeWslRuntime[]> {
@@ -102,10 +102,8 @@ async function prepare(distro: string): Promise<OpenCodeWslRuntime> {
     return result.stdout.trim()
   }
   const app = getAppEnvironment()
-  // The reader is plain JavaScript; either packaged Linux architecture is usable.
-  const reader = (['linux-x64', 'linux-arm64'] as const)
-    .flatMap((platform) => relayBundleCandidates(platform, app.getAppPath()))
-    .map((directory) => join(directory, RELAY_OPENCODE_SQLITE_READER_FILENAME))
+  const reader = relayBundleCandidates('wsl', app.getAppPath())
+    .map((directory) => join(directory, OPENCODE_SQLITE_READER_FILENAME))
     .find(existsSync)
   if (!reader) {
     throw new Error('The bundled WSL SQLite reader is missing. Reinstall Orca to repair it.')
@@ -113,6 +111,7 @@ async function prepare(distro: string): Promise<OpenCodeWslRuntime> {
   const hasDatabase = await run({
     script: [
       'data="${XDG_DATA_HOME:-$HOME/.local/share}/opencode"',
+      'if [ -f "$HOME/.zcode/cli/db/db.sqlite" ]; then printf present; exit 0; fi',
       // WSL discovery still enumerates the default data root independently of guest overrides.
       'for db in "$HOME/.local/share/opencode"/opencode.db "$HOME/.local/share/opencode"/opencode-*.db; do if [ -f "$db" ]; then printf present; exit 0; fi; done',
       'case "${OPENCODE_DB-}" in',
@@ -125,7 +124,7 @@ async function prepare(distro: string): Promise<OpenCodeWslRuntime> {
     loginPath: 'none'
   })
   if (hasDatabase !== 'present') {
-    return { distro, error: 'No OpenCode database is present in this WSL distro.' }
+    return { distro, error: 'No OpenCode or ZCode database is present in this WSL distro.' }
   }
   const readerPath = await run({
     program: 'wslpath',
@@ -143,20 +142,13 @@ async function prepare(distro: string): Promise<OpenCodeWslRuntime> {
     if (arch !== 'x86_64' && arch !== 'aarch64' && arch !== 'arm64') {
       throw new Error(`Unsupported WSL SQLite reader architecture: ${arch}`)
     }
-    const libc = parseOrcadLinuxLibc(
-      await run({
-        script:
-          'getconf GNU_LIBC_VERSION 2>/dev/null || ldd --version 2>&1 || ' +
-          'for loader in /lib/ld-musl-*.so.1; do [ ! -e "$loader" ] || { echo musl; break; }; done',
-        loginPath: 'none'
-      })
-    )
+    const { libc } = await probeLinuxLibc((script) => run({ script, loginPath: 'none' }))
     const target = `linux-${arch === 'x86_64' ? 'x64' : 'arm64'}-${libc}` as const
     const home = await run({ script: 'printf %s "$HOME"', loginPath: 'none' })
     if (!home.startsWith('/')) {
       throw new Error('WSL did not provide an absolute home directory.')
     }
-    // Same layout and checks as an SSH host's store; a legacy vault-sqlite/ Bun is left alone.
+    // Reuse SSH runtime-store validation; leave legacy vault-sqlite Bun installations untouched.
     const host = getRemoteHostPlatform(arch === 'x86_64' ? 'linux-x64' : 'linux-arm64')
     const runtimeDir = nodeRuntimeStoreDir(host, `${home}/.cache/orca`, target)
     executable = posixNodeRuntimeExecutable(host, runtimeDir)

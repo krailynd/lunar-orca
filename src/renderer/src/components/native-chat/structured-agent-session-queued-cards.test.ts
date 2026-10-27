@@ -1,7 +1,3 @@
-// Card projection policy: queue order, derived hold labels (the wire carries
-// holds, not labels), and the presentation-only suppression of a card whose submission
-// already arrived — a queued draft is otherwise never a transcript bubble.
-
 import { describe, expect, it } from 'vitest'
 import type { AgentJournalSubmission } from '../../../../shared/agent-session-journal-types'
 import type { AgentSessionQueuedMessage } from '../../../../shared/agent-session-wire'
@@ -47,7 +43,6 @@ function submission(
   }
 }
 
-/** The host's hand-off of draft `draftId`, always under a submission id of its own. */
 function handOff(
   draftId: string,
   dispatchState: AgentJournalSubmission['dispatchState'] = 'pending',
@@ -56,7 +51,7 @@ function handOff(
   return submission(id, dispatchState, draftId)
 }
 
-const IDLE = { hasPendingPrompt: false }
+const IDLE = {}
 
 describe('queued message cards', () => {
   it('orders by host position whatever order the list arrives in', () => {
@@ -65,11 +60,8 @@ describe('queued message cards', () => {
     expect(cards[0]?.text).toBe('text of a')
   })
 
-  it('holds: waiting defaults to the turn, a pending prompt changes the caption', () => {
+  it('holds: a waiting card waits its turn', () => {
     expect(projectQueuedMessageCards([draft('a', 1)], [], IDLE)[0]?.hold).toBe('turn')
-    expect(
-      projectQueuedMessageCards([draft('a', 1)], [], { hasPendingPrompt: true })[0]?.hold
-    ).toBe('awaiting-answer')
   })
 
   it('a returned card carries its stored reason and blocks the label of drafts behind it', () => {
@@ -139,7 +131,7 @@ describe('queued message cards', () => {
     expect(cards.map((card) => card.messageId)).toEqual(['kept', 'refused'])
   })
 
-  it('a paused queue outranks a pending prompt: an answer does not drain it', () => {
+  it("a paused queue holds its waiting cards; a card's own hold or return still shows", () => {
     const cards = projectQueuedMessageCards(
       [
         draft('waiting', 1),
@@ -148,7 +140,7 @@ describe('queued message cards', () => {
         draft('behind', 4)
       ],
       [],
-      { hasPendingPrompt: true, queuePaused: true }
+      { queuePaused: true }
     )
     expect(cards.map((card) => card.hold)).toEqual([
       'queue-paused',
@@ -156,14 +148,10 @@ describe('queued message cards', () => {
       'returned',
       'behind-returned'
     ])
-    expect(
-      projectQueuedMessageCards([draft('waiting', 1)], [], { hasPendingPrompt: true })[0]?.hold
-    ).toBe('awaiting-answer')
   })
 
-  it('a paused queue holds every waiting card, in order: an answer does not drain it', () => {
+  it('a paused queue holds every waiting card, in order', () => {
     const cards = projectQueuedMessageCards([draft('held', 1), draft('typed-after', 2)], [], {
-      hasPendingPrompt: true,
       queuePaused: true
     })
     expect(cards.map((card) => card.hold)).toEqual(['queue-paused', 'queue-paused'])
@@ -174,7 +162,7 @@ describe('queued message cards', () => {
   it("the header names the queue's pause while it holds a card, and none over cards Resume would not send", () => {
     const stopped = { reason: 'stopped' } as const
     const project = (messages: AgentSessionQueuedMessage[], queuePaused = true) =>
-      projectQueuedMessageCards(messages, [], { hasPendingPrompt: false, queuePaused })
+      projectQueuedMessageCards(messages, [], { queuePaused })
     expect(queuedMessagesQueuePause(project([draft('held', 1)]), stopped)).toEqual(stopped)
     const unsendable = [
       draft('returned', 1, { state: 'returned', returnedReason: null }),
@@ -188,7 +176,6 @@ describe('queued message cards', () => {
     expect(queuedMessagesQueuePause(unpaused, null)).toBeNull()
   })
 
-  // A card held on its own (a failed send, or a newer host's hold) holds nothing behind it.
   it('a card behind a card held on its own is not held by it', () => {
     const cards = projectQueuedMessageCards(
       [
@@ -255,15 +242,13 @@ describe('queued message cards', () => {
       entry('plain'),
       entry('recorded', { phase: 'recorded' })
     ]
-    // Its card draws a queue send while the agent works; a plain send stays in view, and so does a
-    // recorded one until its row arrives (the transcript drops it then).
+    // Pending queued sends use cards while working; plain/recorded sends remain bubbles until host ownership appears.
     expect(ids(pendingSendsOutsideQueuedCards(sends, [], true))).toEqual(['plain', 'recorded'])
     expect(ids(pendingSendsOutsideQueuedCards(sends, [], false))).toEqual([
       'queued',
       'plain',
       'recorded'
     ])
-    // Once the host visibly holds it, it is a card.
     expect(ids(pendingSendsOutsideQueuedCards(sends, ['plain'], false))).toEqual([
       'queued',
       'recorded'
@@ -309,7 +294,7 @@ describe("another agent's card", () => {
     const cards = projectQueuedMessageCards(
       [{ ...agentDraft, body: { ...agentDraft.body, from } }, draft('b', 2)],
       [],
-      { hasPendingPrompt: false }
+      IDLE
     )
     expect(cards.map((card) => card.from)).toEqual([from, undefined])
   })

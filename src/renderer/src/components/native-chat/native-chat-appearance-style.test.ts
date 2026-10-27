@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createGlobalSettingsFixture } from '../../../../shared/global-settings-test-fixture'
 import { buildFontFamily } from '@/lib/monospace-font-family'
+import { buildAppFontFamily } from '@/lib/app-font-family'
 import * as terminalThemeSelection from '../../../../shared/terminal-theme-selection'
 import { resolveConfiguredTerminalColors } from '../../../../shared/terminal-theme-selection'
 import { nativeChatAppearanceStyle, nativeChatContrastMix } from './native-chat-appearance-style'
@@ -25,6 +26,28 @@ describe('nativeChatContrastMix', () => {
 })
 
 describe('nativeChatAppearanceStyle terminal interface', () => {
+  it('uses a custom chat family while preserving code fonts and terminal matching precedence', () => {
+    const settings = makeSettings({
+      appFontFamily: 'Arial',
+      terminalFontFamily: 'Menlo',
+      nativeChatAppearance: { fontFamily: 'Georgia' }
+    })
+    const style = nativeChatAppearanceStyle(settings)
+    expect(style['--chat-font-family']).toBe(buildAppFontFamily('Georgia'))
+    expect(style['--chat-code-font-family']).toBe(buildFontFamily('Menlo'))
+    expect(
+      nativeChatAppearanceStyle({
+        ...settings,
+        nativeChatAppearance: { ...settings.nativeChatAppearance, matchTerminalInterface: true }
+      })['--chat-font-family']
+    ).toBe(buildFontFamily('Menlo'))
+    expect(
+      nativeChatAppearanceStyle({
+        ...settings,
+        nativeChatAppearance: { fontFamily: '' }
+      })['--chat-font-family']
+    ).toBeUndefined()
+  })
   it('follows the terminal code font while keeping default body font and colors', () => {
     const style = nativeChatAppearanceStyle(makeSettings({ terminalFontFamily: 'Menlo' }))
     expect(style['--chat-code-font-family']).toBe(buildFontFamily('Menlo'))
@@ -156,18 +179,29 @@ describe('nativeChatAppearanceStyle terminal interface', () => {
       '--chat-foreground-mix': '56%'
     })
   })
+
+  it('lets message text follow any terminal size while controls and spacing stay in 12-20', () => {
+    const at = (terminalFontSize: number) =>
+      nativeChatAppearanceStyle(
+        makeSettings({ terminalFontSize, nativeChatAppearance: { matchTerminalInterface: true } })
+      )
+    expect(at(24)).toMatchObject({
+      '--chat-font-size': '24px',
+      '--chat-code-font-size': '24px',
+      '--chat-ui-font-size': '20px',
+      '--chat-estimated-line-height': (22 * 24) / 14,
+      '--chat-estimated-spacing-scale': 20 / 14
+    })
+    expect(at(10)).toMatchObject({
+      '--chat-font-size': '10px',
+      '--chat-ui-font-size': '12px',
+      '--chat-estimated-spacing-scale': 12 / 14
+    })
+    expect(at(16)['--chat-ui-font-size']).toBe('16px')
+  })
 })
 
 describe('chat root appearance style', () => {
-  it('keeps shared typography tokens independent of chat size and provides a relative code ratio', () => {
-    const style = nativeChatAppearanceStyle({
-      nativeChatAppearance: { fontSize: 20, codeFontSize: 12 }
-    })
-    expect(style).not.toHaveProperty('--text-sm')
-    expect(style).not.toHaveProperty('--text-xs')
-    expect(style).not.toHaveProperty('fontSize')
-    expect(style['--chat-inline-code-ratio']).toBe('0.6em')
-  })
   it('derives wrap capacity from actual column width, including full-width panes', () => {
     const wide = nativeChatAppearanceStyle({ nativeChatAppearance: { width: 'wide' } })
     const full = nativeChatAppearanceStyle({ nativeChatAppearance: { width: 'full' } }, 1200)
@@ -178,15 +212,6 @@ describe('chat root appearance style', () => {
     expect(nativeChatAppearanceStyle(undefined, 384)['--chat-estimated-chars-per-line']).toBe(50)
   })
 
-  it('provides default text, independent code size, and comfortable width', () => {
-    expect(nativeChatAppearanceStyle(undefined)).toMatchObject({
-      '--chat-font-size': '14px',
-      '--chat-code-font-size': '12px',
-      '--chat-content-max-width': '46rem',
-      '--chat-estimated-line-height': 22,
-      '--chat-estimated-chars-per-line': 96
-    })
-  })
   it.each(['light', 'dark', 'system'] as const)(
     'leaves native controls app-owned in %s mode when matching is off',
     (theme) => {

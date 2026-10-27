@@ -1,8 +1,9 @@
+import { createFakePipedChild } from '../../shared/__fixtures__/fake-spawned-child'
+import type { PipedChildProcess } from '@orca/process-host/process-spec'
 import { execFileSync } from 'node:child_process'
-import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
-import { spawnProcess, type SpawnedProcess } from '../../shared/child-process/run-process'
+import { spawnProcess } from '@orca/process-host'
 import type { DescendantTreeVerdict } from '../pty-descendant-exit-verification'
 import type { DescendantSnapshot } from '../pty-descendant-termination'
 import {
@@ -13,10 +14,6 @@ import {
 import { managedChild } from './claude-child-exit-proof-fixture'
 import { GRACEFUL_EXIT_MS } from './claude-child-exit-proof-ladder'
 
-// The descendant models an MCP server: it either cooperates or, when it traps
-// SIGTERM, only a forced, verified sweep can reach it. The root either traps
-// SIGTERM too, or leaves promptly on stdin end the way a healthy CLI does —
-// which is the path that used to skip descendant proof entirely.
 function childWithDescendantScript(input: {
   rootTrapsSigterm: boolean
   descendantTrapsSigterm: boolean
@@ -46,11 +43,7 @@ process.stdin.resume()
 process.stdout.write('ready\\n')
 `
 
-/**
- * Sampled synchronously so it reads the exact moment the close boundary is
- * crossed. A zombie has exited (its parent just has not reaped it yet), so a
- * kill(pid, 0) probe would misreport it as running.
- */
+/** Sample at the close boundary; zombies count as exited even though kill(pid, 0) finds them. */
 function descendantState(pid: number): 'running' | 'exited' {
   let state: string
   try {
@@ -68,24 +61,12 @@ function descendantState(pid: number): 'running' | 'exited' {
   return state.startsWith('Z') ? 'exited' : 'running'
 }
 
-/**
- * ps lstart is second-resolution, so the identity-safe sweep only SIGKILLs a row
- * born strictly before the second the snapshot was captured in. The snapshot is
- * armed the moment close begins, so a descendant born in that same second can
- * only be asked, never forced — the same bound an MCP server spawned within a
- * second of the user closing the chat would hit.
- */
+// ps start times have second precision; cross that boundary so the snapshot permits forced signals.
 function ageDescendantPastTheCaptureSecond(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 1_000 - (Date.now() % 1_000) + 20))
 }
 
-/**
- * The close ladder as production drives it: `closeProcessRegistry` retries an
- * unproven close, and each retry re-verifies the retained snapshot. A loaded
- * host can spend one attempt's whole window inside `ps`, and reporting false
- * there is the honest verdict — the requirement is that TRUE never outruns the
- * observation, which the caller asserts at whichever boundary returns it.
- */
+// Model registry retries: slow process-table reads may leave one close attempt unproven.
 async function proveExitWithRetries(
   input: Parameters<typeof proveClaudeChildExit>[0],
   attempts = 3
@@ -98,7 +79,7 @@ async function proveExitWithRetries(
   return proveClaudeChildExit(input)
 }
 
-function spawnScript(script: string): ReturnType<typeof spawnProcess> {
+function spawnScript(script: string): PipedChildProcess {
   const child = spawnProcess({
     program: process.execPath,
     args: ['-e', script],
@@ -108,28 +89,21 @@ function spawnScript(script: string): ReturnType<typeof spawnProcess> {
   return child
 }
 
-function firstStdoutLine(child: ReturnType<typeof spawnProcess>): Promise<string> {
+function firstStdoutLine(child: PipedChildProcess): Promise<string> {
   return new Promise((resolve) => {
     child.stdout.setEncoding('utf8').once('data', (chunk: string) => resolve(chunk.trim()))
   })
 }
 
-/** `null` models a spawn that failed before a pid existed. */
-function mockChild(
-  pid: number | null = 424242
-): EventEmitter &
-  Pick<SpawnedProcess, 'pid' | 'kill' | 'stdin' | 'stderr'> & { kill: ReturnType<typeof vi.fn> } {
-  const child = Object.assign(new EventEmitter(), {
+function mockChild(pid: number | null = 424242) {
+  return Object.assign(createFakePipedChild(), {
     pid: pid ?? undefined,
     stdin: new PassThrough(),
     stderr: new PassThrough(),
     kill: vi.fn(() => true)
   })
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The proof reads only pid, events, kill, stdin and stderr from this fixture.
-  return child as never
 }
 
-/** A tree whose verdict is scripted per reap, recording when it was armed. */
 function mockTree(
   verdicts: DescendantTreeVerdict[],
   forcedReapAttempted = false
@@ -177,17 +151,12 @@ describe('claude child exit proof', () => {
 
       try {
         const proven = await proveExitWithRetries({ managed: managedChild(child) })
-        // Evaluated AT the boundary, not by polling until a deferred sweep timer
-        // wins: true releases the lease, so a descendant still running here is
-        // exactly the orphan the proof exists to prevent. False would be the
-        // honest verdict for a tree that outlived the bounded ladder.
+        // Assert at lease release; polling afterward could conceal a surviving descendant.
         expect({ proven, descendant: descendantState(descendantPid) }).toEqual({
           proven: true,
           descendant: 'exited'
         })
       } finally {
-        // Failure-safe only: the assertion above owns the requirement, this just
-        // stops a failing run from leaking a process.
         try {
           process.kill(descendantPid, 'SIGKILL')
         } catch {
@@ -201,8 +170,6 @@ describe('claude child exit proof', () => {
   it.runIf(process.platform !== 'win32')(
     'proves a promptly exiting root only once its stubborn descendant is gone too',
     async () => {
-      // The ordinary healthy close: the root leaves on stdin end within the graceful
-      // window. Its descendant must still be proven gone, not assumed gone with it.
       const child = spawnScript(
         childWithDescendantScript({ rootTrapsSigterm: false, descendantTrapsSigterm: true })
       )
@@ -267,8 +234,6 @@ describe('claude child exit proof', () => {
 
     // The fixture closes under POSIX rules; on Windows a self-exit after stdin end is the close.
     await expect(proveClaudeChildExit({ managed, tree })).resolves.toBe(true)
-    // The snapshot is the only proof that survives the root: taken while it lived,
-    // verified once it left. A reap before the exit would have been the forced ladder.
     expect(exitedWhenArmed).toBe(false)
     expect(tree.reap).toHaveBeenCalledTimes(1)
     expect(managed.rootVerdict).toBe('exited')
@@ -317,7 +282,6 @@ describe('claude child exit proof', () => {
 
       await expect(proof).resolves.toBe(false)
       expect(managed.rootVerdict).toBe('exited')
-      // One verification per attempt: the retried close re-verifies, this one does not.
       expect(tree.reap).toHaveBeenCalledTimes(1)
       expect(vi.getTimerCount()).toBe(0)
     } finally {
@@ -360,8 +324,6 @@ describe('claude child exit proof', () => {
     })
 
     await expect(proveClaudeChildExit({ managed, tree })).resolves.toBe(false)
-    // A dead root's descendants have reparented: walking its pid now could only
-    // sweep a stranger, so no walk is attempted and nothing is proven.
     expect(captureDescendants).not.toHaveBeenCalled()
     expect(terminateDescendants).not.toHaveBeenCalled()
     expect(tree.treeVerdict).toBe('unverifiable')
@@ -433,10 +395,6 @@ describe('claude child tree reaper', () => {
 
   it('keeps an observed live descendant when a later re-read cannot see the table', async () => {
     const child = mockChild()
-    // Reap #1 completed and saw a descendant alive at its deadline; the root then
-    // left on its own and the re-verification on a loaded host could not read the
-    // table. "Could not look" must not erase "was seen alive": the report never
-    // calls a survivor gone.
     const terminateDescendants = vi
       .fn()
       .mockResolvedValueOnce('live')
@@ -454,8 +412,6 @@ describe('claude child tree reaper', () => {
 
   it('treats an unreadable process table as unproven and re-walks the live root', async () => {
     const child = mockChild()
-    // A loaded host can miss the table's deadline; while the root still lives
-    // that is a retryable read, not evidence that it has no descendants.
     const captureDescendants = vi
       .fn()
       .mockResolvedValueOnce(null)
@@ -549,8 +505,7 @@ describe('claude child tree reaper', () => {
 
     expect(terminateDescendants).toHaveBeenCalledWith({
       ...refreshed,
-      // The retained 4243 row was first observed in the earlier displayed
-      // second. Its per-row boundary must not advance with the refresh.
+      // A retained row must keep its original capture boundary.
       capturedAtMsByPid: {
         '4243': first.capturedAtMs,
         '4244': refreshed.capturedAtMs
@@ -586,7 +541,6 @@ describe('claude child tree reaper', () => {
     await tree.refresh?.()
 
     await expect(tree.reap()).resolves.toBe('unverifiable')
-    // The descendant evidence is discarded; the root's identity never was in doubt.
     expect(terminateDescendants).not.toHaveBeenCalled()
     expect(child.kill).toHaveBeenCalledWith('SIGKILL')
   })
@@ -697,13 +651,10 @@ describe('claude child tree reaper', () => {
     })
 
     await expect(tree.reap()).resolves.toBe('unverifiable')
-    // An unreadable table costs the snapshot, never the kill on the live root.
     expect(child.kill).toHaveBeenCalledTimes(1)
     exited = true
     await expect(tree.reap()).resolves.toBe('unverifiable')
     expect(captureDescendants).toHaveBeenCalledTimes(1)
-    // The second attempt observes a dead root: Node has dropped the handle, so
-    // there is nothing left to signal and no recycled pid to reach.
     expect(child.kill).toHaveBeenCalledTimes(1)
   })
 
@@ -722,8 +673,6 @@ describe('claude child tree reaper', () => {
 
     await tree.capture()
     await expect(tree.reap()).resolves.toBe('unverifiable')
-    // A vacuous walk remains retryable while the root is live; no empty-tree
-    // verdict is latched from a missing root row.
     expect(captureDescendants).toHaveBeenCalledTimes(2)
   })
 
@@ -781,10 +730,8 @@ describe('claude child tree reaper', () => {
     await vi.waitFor(() => expect(terminateWindowsTree).toHaveBeenCalledWith(424242))
     expect(child.kill).not.toHaveBeenCalled()
     release.resolve(true)
-    // taskkill's clean exit is the one outcome that reports every process in the tree terminated.
     await expect(reap).resolves.toBe('exited')
     expect(child.kill).toHaveBeenCalledWith('SIGKILL')
-    // No creation-time snapshot: a host whose table has no creation times reaps the same way.
     expect(captureDescendants).not.toHaveBeenCalled()
   })
 
@@ -797,7 +744,6 @@ describe('claude child tree reaper', () => {
 
     await expect(tree.reap()).resolves.toBe('unverifiable')
     expect(tree.treeVerdict).toBe('unverifiable')
-    // The held handle still takes the root down.
     expect(child.kill).toHaveBeenCalledWith('SIGKILL')
   })
 
@@ -823,7 +769,6 @@ describe('claude child tree reaper', () => {
       terminateWindowsTree
     })
 
-    // Its pid left with it, so its tree can no longer be addressed.
     await expect(tree.reap()).resolves.toBe('unverifiable')
     expect(terminateWindowsTree).not.toHaveBeenCalled()
     expect(child.kill).not.toHaveBeenCalled()

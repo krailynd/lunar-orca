@@ -6,16 +6,16 @@ import type { GhAccountBindingInventory } from '../../../../shared/github/auth-t
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { SearchableSetting } from './SearchableSetting'
-import { useAppStore } from '../../store'
-import { getRepoOwnerRoutedSettings } from '@/lib/repo-runtime-owner'
-import { getActiveRuntimeTarget } from '@/runtime/runtime-rpc-client'
+import { useAppStore } from '@/store/index'
+import { runtimeTargetForOwnerEnvironment } from '@/runtime/runtime-client-target'
+import { getRepoExecutionHostId, parseExecutionHostId } from '../../../../shared/execution-host'
 import { translate } from '@/i18n/i18n'
 import { searchKeywords } from './settings-search-keywords'
 import {
   isGhAccountBindingEnforced,
   listRepositoryGhBindableAccounts,
   validateRepositoryGhAccountBinding
-} from './repository-github-account'
+} from './repository/identity/repository-github-account'
 
 type RepositoryGitHubAccountSectionProps = {
   repo: Repo
@@ -27,7 +27,7 @@ function accountKey(host: string, user: string): string {
   return `${host.toLowerCase()}\0${user.toLowerCase()}`
 }
 
-// Why: Radix Select rejects an empty item value, so "inherit the ambient login" needs a sentinel.
+// Radix forbids empty item values; use a sentinel for inherited ambient login.
 const AMBIENT_VALUE = '__ambient_gh_login__'
 
 export function RepositoryGitHubAccountSection({
@@ -35,7 +35,6 @@ export function RepositoryGitHubAccountSection({
   updateRepo,
   forceVisible
 }: RepositoryGitHubAccountSectionProps): React.JSX.Element | null {
-  const settings = useAppStore((state) => state.settings)
   const [inventory, setInventory] = useState<GhAccountBindingInventory | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -44,13 +43,12 @@ export function RepositoryGitHubAccountSection({
   const loadGenerationRef = useRef(0)
   const selectLabelId = useId()
 
-  // Why: getRepoOwnerRoutedSettings returns a fresh object each render, and the target
-  // depends on nothing else — key the memo on the id so it stays stable.
-  const activeRuntimeEnvironmentId =
-    getRepoOwnerRoutedSettings(settings, repo)?.activeRuntimeEnvironmentId ?? null
+  // Bind to the repo owner and memoize by host identity.
+  const ownerHost = parseExecutionHostId(getRepoExecutionHostId(repo))
+  const ownerEnvironmentId = ownerHost?.kind === 'runtime' ? ownerHost.environmentId : null
   const runtimeTarget = useMemo(
-    () => getActiveRuntimeTarget({ activeRuntimeEnvironmentId }),
-    [activeRuntimeEnvironmentId]
+    () => runtimeTargetForOwnerEnvironment(ownerEnvironmentId),
+    [ownerEnvironmentId]
   )
 
   const loadInventory = useCallback(
@@ -269,7 +267,7 @@ export function RepositoryGitHubAccountSection({
               )}
             </SelectItem>
             {repo.ghAccount && !selectedInInventory ? (
-              // Why: keep the bound account's key as the item value so the trigger shows it; disabled so it cannot be re-picked.
+              // Retain the missing bound key for display, but disable reselection.
               <SelectItem value={selectedKey} disabled>
                 {translate(
                   'auto.components.settings.RepositoryGitHubAccountSection.unavailableOption',

@@ -2,13 +2,14 @@ import type { AgentSessionJournalIdentity } from '../../shared/agent-session-jou
 import type { AgentSessionProviderHandleLink } from '../../shared/agent-session-provider-handle'
 import { claudeProviderHandle } from '../../shared/agent-session-provider-handle-encoding'
 import type { AgentSessionProcessIdentity } from '../../shared/agent-session-record'
-import { readProcessStartTimeMs } from '../runtime/agent-session-process-identity-probe'
+import { readProcessStartTimeMs } from '../runtime/agent-session/ownership/agent-session-process-identity-probe'
 
 export function claudeProviderHandleLink(input: {
   sessionId: string
   leafUuid: string | null
   resumed: boolean
   origin?: 'adopted'
+  forkedFromKey?: string
   fence: number
   linkId?: string
   observedAt: number
@@ -18,15 +19,13 @@ export function claudeProviderHandleLink(input: {
       input.linkId ??
       `claude-${input.fence}-${input.sessionId}-${input.leafUuid ?? 'empty'}`.slice(0, 128),
     handle: claudeProviderHandle(input.sessionId, input.leafUuid),
-    origin: input.origin ?? (input.resumed ? 'resumed' : 'created'),
+    origin:
+      input.origin ?? (input.forkedFromKey ? 'forked' : input.resumed ? 'resumed' : 'created'),
     mintedAtFence: input.fence,
-    observedAt: input.observedAt
+    observedAt: input.observedAt,
+    ...(input.forkedFromKey ? { forkedFromKey: input.forkedFromKey } : {})
   }
 }
-
-/** The child echoes its spawn token here so the owner probe can tell a live
- *  child of this reservation from a same-pid stranger. */
-export const CLAUDE_SPAWN_TOKEN_ENV = 'ORCA_AGENT_SESSION_SPAWN_TOKEN'
 
 const START_TIME_READ_ATTEMPTS = 3
 
@@ -41,8 +40,7 @@ export async function claudeProcessIdentity(
   if (input.pid === undefined) {
     throw new Error('claude app-server started without a pid')
   }
-  // Best-effort: without it a later owner probe is indeterminate, and recovery releases such an
-  // owner without signalling it, so an unreadable start time must not refuse the session.
+  // An unreadable start time leaves recovery unverifiable; it must not prevent startup.
   let processStartTimeMs: number | null = null
   for (
     let attempt = 0;

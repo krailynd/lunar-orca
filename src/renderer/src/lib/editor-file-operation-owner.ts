@@ -2,6 +2,8 @@ import { parseExecutionHostId, type ExecutionHostId } from '../../../shared/exec
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
 import { parseWorkspaceKey } from '../../../shared/workspace-scope'
 import type { AppState } from '@/store/types'
+import { runtimeTargetForOwnerEnvironment } from '@/runtime/runtime-client-target'
+import type { RuntimeClientTarget } from '../../../shared/runtime-client-target'
 import { findFolderWorkspaceOwner } from './folder-workspace-runtime-owner'
 import {
   assertWorktreeOperationGenerationSnapshotCurrent,
@@ -10,11 +12,15 @@ import {
 } from './worktree-operation-generation'
 import {
   getFloatingWorkspaceOperationRoute,
-  resolveExplicitWorktreeOperationRouteResult,
   resolveWorktreeOperationRoute,
-  settingsForWorktreeOperationRoute,
   type WorktreeOperationRoute
 } from './worktree-operation-route'
+import { resolveExplicitWorktreeOperationRouteResult } from './worktree-operation-catalog-route'
+import {
+  selectDetectedWorktreesByRepo,
+  selectFolderWorkspaces,
+  selectWorktreesByRepo
+} from '@/store/workspace-record-selectors'
 
 export type EditorFileOperationProvenance = {
   generation: WorktreeOperationGenerationSnapshot
@@ -86,7 +92,7 @@ function resolveEditorOwnerRoute(
   worktreeId: string,
   capturedHostId?: ExecutionHostId | null
 ): WorktreeOperationRoute | null {
-  // Workspace focus cannot replace a file's catalog owner.
+  // Neither workspace focus nor the Active Server focus can replace a file's catalog owner.
   const ownerState = { ...state, activeWorktreeId: null, activeWorkspaceExecutionHostId: null }
   const route = resolveWorktreeOperationRoute(ownerState, worktreeId)
   const scope = parseWorkspaceKey(worktreeId)
@@ -139,8 +145,7 @@ function resolveCurrentEditorRoute(
   if (explicitResolution.kind === 'ambiguous' || provenance.ownershipProjection === 'explicit') {
     return null
   }
-  // Why: ordinary folder workspaces have no published worktree row, so re-resolve their live
-  // folder owner after preserving the explicit-owner fail-closed contract above (#10251).
+  // Folder workspaces lack worktree rows; re-resolve their live owner while preserving explicit-owner fail-closed checks (#10251).
   if (parseWorkspaceKey(worktreeId)?.type === 'folder') {
     return resolveEditorOwnerRoute(state, worktreeId, provenance.generation.route.executionHostId)
   }
@@ -149,10 +154,10 @@ function resolveCurrentEditorRoute(
 
 function isWorktreePublished(state: EditorOwnerState, worktreeId: string): boolean {
   return (
-    Object.values(state.worktreesByRepo ?? {}).some((worktrees) =>
+    Object.values(selectWorktreesByRepo(state) ?? {}).some((worktrees) =>
       worktrees.some((worktree) => worktree.id === worktreeId)
     ) ||
-    Object.values(state.detectedWorktreesByRepo ?? {}).some((result) =>
+    Object.values(selectDetectedWorktreesByRepo(state) ?? {}).some((result) =>
       result.worktrees.some((worktree) => worktree.id === worktreeId)
     )
   )
@@ -168,7 +173,7 @@ export function getEditorFileOperationContext(
   },
   worktreePath: string | null
 ): {
-  settings: AppState['settings']
+  target: RuntimeClientTarget
   worktreeId: string
   worktreePath: string | null
   connectionId?: string
@@ -192,7 +197,7 @@ export function getEditorFileOperationContext(
   const resolvedWorktreePath =
     (worktreePath?.trim() ? worktreePath : null) ??
     (workspaceScope?.type === 'folder'
-      ? (state.folderWorkspaces.find(
+      ? (selectFolderWorkspaces(state).find(
           (workspace) => workspace.id === workspaceScope.folderWorkspaceId
         )?.folderPath ?? null)
       : null)
@@ -213,7 +218,7 @@ export function getEditorFileOperationContext(
     throw new Error(OWNER_CHANGED_MESSAGE)
   }
   return {
-    settings: settingsForWorktreeOperationRoute(state.settings, route),
+    target: runtimeTargetForOwnerEnvironment(route.runtimeEnvironmentId),
     worktreeId: file.worktreeId,
     worktreePath: resolvedWorktreePath,
     expectedExecutionHostId: host.kind === 'ssh' ? host.id : 'local',

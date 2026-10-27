@@ -1,18 +1,11 @@
 import type { AgentSessionSendResult } from '../../../src/shared/agent-session-wire'
 import { agentSessionRefusalOperationState } from '../../../src/shared/agent-session-refusal-retry'
-import { structuredAgentSessionRejectionNotice } from '../../../src/shared/structured-agent-session-rejection-words'
-import { dispatchWasWithdrawn } from '../../../src/shared/structured-agent-session-dispatch-rejection'
-import {
-  readWholeAgentSessionFailureFact,
-  type AgentSessionFailureFact
-} from '../../../src/shared/agent-session-failure'
-import type { MobileNativeChatSendOutcome } from './mobile-native-chat-send'
+import type { MobileNativeChatSendOutcome } from './native-chat/mobile-native-chat-send'
 import type { StructuredAgentSessionMutationCallResult } from './mobile-structured-agent-session-rpc'
 
 export type MobileStructuredSendDelivery = {
   outcome: MobileNativeChatSendOutcome
   error: string | null
-  failure?: AgentSessionFailureFact
 }
 
 export function mobileStructuredSendDelivery(
@@ -41,20 +34,9 @@ export function mobileStructuredSendDelivery(
   if (submission.queuedMessageId === result.value.clientMessageId) {
     return { outcome: 'unknown', error: null }
   }
-  if (submission.dispatchState === 'rejected') {
-    if (submission.keptAsQueuedMessageId !== undefined) {
-      return { outcome: 'queued', error: null }
-    }
-    if (submission.queuedMessageId === undefined && dispatchWasWithdrawn(submission)) {
-      // The host transcript already owns this send's stopped row.
-      return { outcome: 'accepted', error: null }
-    }
-    const failure = readWholeAgentSessionFailureFact(submission.rejection)
-    return {
-      outcome: 'rejected',
-      error: structuredAgentSessionRejectionNotice(submission.reason, 'composer-send'),
-      ...(failure?.kind === 'notSignedIn' ? { failure } : {})
-    }
+  // Recorded rejections stay in history rather than returning to the composer; requeued submissions belong to their cards.
+  if (submission.dispatchState === 'rejected' && submission.keptAsQueuedMessageId !== undefined) {
+    return { outcome: 'queued', error: null }
   }
   return { outcome: 'accepted', error: null }
 }

@@ -33,6 +33,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const settings = useAppStore((s) => s.settings)
   const updateSettings = useAppStore((s) => s.updateSettings)
+  const updateSettingsOrThrow = useAppStore((s) => s.updateSettingsOrThrow)
   const seenTipIds = useAppStore((s) => s.featureTipsSeenIds)
   const featureInteractions = useAppStore((s) => s.featureInteractions)
   const nativeChatUpgradeTipVariant = useAppStore((s) => s.nativeChatUpgradeTipVariant)
@@ -92,9 +93,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
   }
 
   const openShortcutsSettings = (): void => {
-    // Why: dismiss the tip when navigating away — the tip's job is done once
-    // the user clicks through to rebind, and leaving it mounted behind the
-    // settings page would re-appear on close.
+    // Dismiss before opening Settings so closing Settings cannot resurrect the tip.
     markCurrentTipSeen()
     closeModal()
     openSettingsTarget({ pane: 'shortcuts', repoId: null })
@@ -137,15 +136,29 @@ export default function FeatureTipsModal(): JSX.Element | null {
       return
     }
 
-    markFeatureTipsSeen([currentTip.id])
+    if (currentTip.action !== 'learn-native-chat-upgrade') {
+      markFeatureTipsSeen([currentTip.id])
+    }
     switch (currentTip.action) {
       case 'learn-native-chat-upgrade': {
+        if (settings?.experimentalNativeChat !== true) {
+          setPrimaryBusy(true)
+          try {
+            await updateSettingsOrThrow({ experimentalNativeChat: true })
+          } catch {
+            toast.error(
+              translate('featureTips.nativeChatUpgrade.enableError', 'Could not enable chat mode.')
+            )
+            return
+          } finally {
+            setPrimaryBusy(false)
+          }
+        }
+        markFeatureTipsSeen([currentTip.id])
         closeModal()
         break
       }
       case 'learn-cmd-j-palette': {
-        // Why: passive education tip — acknowledging just dismisses; the rebind
-        // path lives in Settings and is reachable from the palette itself.
         trackCmdJPaletteFeatureTipAcknowledged(
           getOrcaCliFeatureTipTelemetrySource(modalData.source)
         )
@@ -182,8 +195,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
       case 'setup-cli': {
         const setupRequestId = setupRequestIdRef.current + 1
         setupRequestIdRef.current = setupRequestId
-        // Why: this modal is lazily mounted; closing it does not unmount the
-        // component, so async install results must not reopen UI after dismissal.
+        // Closing this lazily mounted modal does not unmount it; ignore dismissed installs’ async results.
         const canApplySetupResult = (): boolean =>
           mountedRef.current &&
           activeModalRef.current === 'feature-tips' &&
@@ -301,11 +313,9 @@ export default function FeatureTipsModal(): JSX.Element | null {
         open={isOpen}
         tip={currentTip}
         primaryBusy={primaryBusy}
-        variant={nativeChatUpgradeTipVariant ?? 'none'}
         chatModeOn={settings?.experimentalNativeChat === true}
         onOpenChange={handleOpenChange}
         onPrimaryAction={() => void handlePrimaryAction()}
-        onChatModeChange={(on) => void updateSettings({ experimentalNativeChat: on })}
         onSettingsClick={openNativeChatSettings}
       />
     )

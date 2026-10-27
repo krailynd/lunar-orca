@@ -1,10 +1,4 @@
-// Cuts markdown source into its top-level blocks so a growing document can be
-// rendered block by block: text appended to the end changes only the last block,
-// and every block before it keeps its rendered result.
-//
-// The cut reuses the previous one. Appended text can change the last block and
-// join it to the one before (a loose list gaining its next item), but reaches no
-// further back, so only the source from the second-to-last block is parsed again.
+// Reparse the last two blocks on append; cross-block definitions or HTML fall back to the whole document.
 
 import type { Nodes } from 'mdast'
 import remarkGfm from 'remark-gfm'
@@ -12,16 +6,17 @@ import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 
 export type MarkdownBlock = {
-  /** Where the block starts in the source; it never moves as text is appended. */
+  /** Source offset, retained for settled blocks on append. */
   start: number
+  /** One-based source line. */
+  line: number
   text: string
 }
 
 export type MarkdownBlockSplit = {
   source: string
-  /** In order; their text joined is the source. */
   blocks: readonly MarkdownBlock[]
-  /** The document cannot be cut: something in it reaches across blocks. */
+  /** Cross-block content requires whole-document rendering. */
   whole: boolean
 }
 
@@ -33,9 +28,7 @@ const blockParser = unified().use(remarkParse).use(remarkGfm)
 /** Tags that cannot hold anything, so cannot hold a later block. */
 const VOID_TAG_PATTERN = /^<(?:br|hr|wbr|img)\b[^>]*>$/i
 
-/** Whether anything in the node reaches into other blocks, however deeply it is nested.
- *  A definition resolves references elsewhere. Raw HTML is re-parsed across the whole
- *  document, so a tag opened in one block may close in a later one. */
+/** References and non-void HTML can affect other blocks and require whole-document parsing. */
 function reachesAcrossBlocks(node: Nodes): boolean {
   if (node.type === 'definition' || node.type === 'footnoteDefinition') {
     return true
@@ -47,7 +40,7 @@ function reachesAcrossBlocks(node: Nodes): boolean {
 }
 
 function wholeDocument(source: string): MarkdownBlockSplit {
-  return { source, blocks: [{ start: 0, text: source }], whole: true }
+  return { source, blocks: [{ start: 0, line: 1, text: source }], whole: true }
 }
 
 export function splitMarkdownTopLevelBlocks(
@@ -59,19 +52,23 @@ export function splitMarkdownTopLevelBlocks(
     return wholeDocument(source)
   }
   const settled = grewFromPrevious ? previous.blocks.slice(0, -UNSETTLED_BLOCKS) : []
-  const base = grewFromPrevious ? (previous.blocks.at(-UNSETTLED_BLOCKS)?.start ?? 0) : 0
+  const reparsed = grewFromPrevious ? previous.blocks.at(-UNSETTLED_BLOCKS) : undefined
+  const base = reparsed?.start ?? 0
+  const baseLine = reparsed?.line ?? 1
   const tail = source.slice(base)
   const tree = blockParser.parse(tail)
   if (reachesAcrossBlocks(tree)) {
     return wholeDocument(source)
   }
   // Each block runs to the next one's start, so the blank lines between stay in the source.
-  const starts = tree.children.map(
-    (child) => ('position' in child ? child.position?.start.offset : undefined) ?? 0
+  const points = tree.children.map((child) =>
+    'position' in child ? child.position?.start : undefined
   )
+  const starts = points.map((point) => point?.offset ?? 0)
   starts[0] = 0
   const blocks = starts.map((start, index) => ({
     start: base + start,
+    line: baseLine + (index === 0 ? 0 : (points[index]?.line ?? 1) - 1),
     text: tail.slice(start, starts[index + 1])
   }))
   return { source, blocks: [...settled, ...blocks], whole: false }

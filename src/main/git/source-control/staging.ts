@@ -10,10 +10,10 @@ import {
   type GitStageWorktreeScopeReceipt
 } from '../../../shared/git-stage-worktree-scope'
 import { findExistingWorktreeSymlinkPaths } from '../worktree-symlink-detection'
+import { redoWriteForDriveCheckoutSuspects } from './drive-checkout-suspect-writes'
 
-/**
- * Stage a file.
- */
+const STAGE_WRITE = ['add', '--update'] as const
+
 export async function stageFile(
   worktreePath: string,
   filePath: string,
@@ -22,17 +22,15 @@ export async function stageFile(
   invalidateGitReadCaches()
   try {
     await gitExecFileAsync(
-      ['add', '--', literalPathspec(filePath, options)],
+      ['add', '--', literalPathspec(filePath, worktreePath, options)],
       gitOptionsForWorktree(worktreePath, options)
     )
+    await redoWriteForDriveCheckoutSuspects(worktreePath, [filePath], STAGE_WRITE, options)
   } finally {
     invalidateGitReadCaches()
   }
 }
 
-/**
- * Unstage a file.
- */
 export async function unstageFile(
   worktreePath: string,
   filePath: string,
@@ -41,17 +39,18 @@ export async function unstageFile(
   invalidateGitReadCaches()
   try {
     // Reset treats an unborn HEAD as an empty tree, preserving the working file.
-    await gitExecFileAsync(['reset', '--quiet', '--', literalPathspec(filePath, options)], {
-      ...gitOptionsForWorktree(worktreePath, options)
-    })
+    await gitExecFileAsync(
+      ['reset', '--quiet', '--', literalPathspec(filePath, worktreePath, options)],
+      {
+        ...gitOptionsForWorktree(worktreePath, options)
+      }
+    )
   } finally {
     invalidateGitReadCaches()
   }
 }
 
-/**
- * Stage selected files through stdin to avoid argv limits and repeated index writes.
- */
+// Use stdin to avoid argv limits and repeated index writes.
 export async function bulkStageFiles(
   worktreePath: string,
   filePaths: string[],
@@ -64,16 +63,17 @@ export async function bulkStageFiles(
   try {
     await gitExecFileAsync(['add', '--pathspec-from-file=-', '--pathspec-file-nul'], {
       ...gitOptionsForWorktree(worktreePath, options),
-      stdin: encodeGitPathspecs(filePaths.map((filePath) => literalPathspec(filePath, options)))
+      stdin: encodeGitPathspecs(
+        filePaths.map((filePath) => literalPathspec(filePath, worktreePath, options))
+      )
     })
+    await redoWriteForDriveCheckoutSuspects(worktreePath, filePaths, STAGE_WRITE, options)
   } finally {
     invalidateGitReadCaches()
   }
 }
 
-/**
- * Stage every change in the worktree when the capped listing cannot name them all.
- */
+// A capped status listing cannot enumerate every change for Stage All.
 export async function stageWorktreeChanges(
   worktreePath: string,
   scope: GitStageWorktreeScope,
@@ -82,28 +82,27 @@ export async function stageWorktreeChanges(
   invalidateGitReadCaches()
   try {
     const gitOptions = gitOptionsForWorktree(worktreePath, options)
-    // Why: Git cannot ignore Orca's shared symlinks under a directory-only rule (`node_modules/`),
-    // so `add --all` would commit a machine-specific link the listing hides (see status-read).
+    // Directory-only ignore rules do not hide shared symlinks; exclude them from add --all.
     const excludedUntrackedPaths =
       scope === 'all' && options.sharedLinkPaths && options.sharedLinkPaths.length > 0
         ? await findExistingWorktreeSymlinkPaths(worktreePath, options.sharedLinkPaths, {
             wslDistro: options.wslDistro
           })
         : []
-    return await stageGitWorktreeScope(
+    const receipt = await stageGitWorktreeScope(
       scope,
       (args, stdin) =>
         gitExecFileAsync(args, stdin === undefined ? gitOptions : { ...gitOptions, stdin }),
       { excludedUntrackedPaths }
     )
+    await redoWriteForDriveCheckoutSuspects(worktreePath, ['.'], STAGE_WRITE, options)
+    return receipt
   } finally {
     invalidateGitReadCaches()
   }
 }
 
-/**
- * Unstage selected files through stdin to avoid argv limits and repeated index writes.
- */
+// Use stdin to avoid argv limits and repeated index writes.
 export async function bulkUnstageFiles(
   worktreePath: string,
   filePaths: string[],
@@ -116,7 +115,9 @@ export async function bulkUnstageFiles(
   try {
     await gitExecFileAsync(['reset', '--quiet', '--pathspec-from-file=-', '--pathspec-file-nul'], {
       ...gitOptionsForWorktree(worktreePath, options),
-      stdin: encodeGitPathspecs(filePaths.map((filePath) => literalPathspec(filePath, options)))
+      stdin: encodeGitPathspecs(
+        filePaths.map((filePath) => literalPathspec(filePath, worktreePath, options))
+      )
     })
   } finally {
     invalidateGitReadCaches()
