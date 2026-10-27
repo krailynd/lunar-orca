@@ -31,8 +31,6 @@ export function buildLinuxElectronBuilderArgs(arch, extraArgs = []) {
     'config/electron-builder.config.cjs',
     '--linux',
     'AppImage',
-    'deb',
-    'rpm',
     `--${arch}`,
     ...extraArgs
   ]

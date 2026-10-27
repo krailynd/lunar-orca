@@ -271,10 +271,8 @@ export const electronViteConfig: UserConfig = {
       dedupe: ['react', 'react-dom'],
       alias: {
         ...markdownParserAliases,
-        react: resolve('node_modules/.pnpm/react@19.2.8/node_modules/react'),
-        'react-dom': resolve(
-          'node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom'
-        ),
+        react: resolve('node_modules/react'),
+        'react-dom': resolve('node_modules/react-dom'),
         'monaco-vim': resolve('node_modules/monaco-vim/dist/monaco-vim.umd.js'),
         'monaco-editor/esm/vs/editor/editor.api': resolve(
           'node_modules/monaco-editor/esm/vs/editor/editor.api.js'

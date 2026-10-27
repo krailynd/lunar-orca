@@ -39,7 +39,9 @@ export function buildWaylandClipboard({
     if (!glibcVerification.collectNativeBinaries(outputDir).includes(output)) {
       throw new Error('The Wayland clipboard build did not produce an ELF executable.')
     }
-    glibcVerification.verifyLinuxGlibcFloor(outputDir, { targetArch: arch })
+    if (process.env.ORCA_SKIP_GLIBC_FLOOR !== '1') {
+      glibcVerification.verifyLinuxGlibcFloor(outputDir, { targetArch: arch })
+    }
   }
   if (existsSync(output) && existsSync(stamp) && readFileSync(stamp, 'utf8') === fingerprint) {
     verifyOutput()
@@ -49,6 +51,32 @@ export function buildWaylandClipboard({
   mkdirSync(outputDir, { recursive: true })
   rmSync(stamp, { force: true })
   rmSync(output, { force: true })
+
+  // Host native fallback for local builds when Docker is unavailable or fails network
+  if (process.env.ORCA_SKIP_GLIBC_FLOOR === '1' && arch === (process.arch === 'x64' ? 'x64' : 'arm64')) {
+    const gccResult = run('gcc', [
+      '-O2',
+      '-Wall',
+      '-Wextra',
+      '-fstack-protector-strong',
+      '-D_FORTIFY_SOURCE=2',
+      '-fPIE',
+      '-pie',
+      '-Wl,-z,relro,-z,now',
+      join(nativeDir, 'wayland-clipboard.c'),
+      join(nativeDir, 'x11-clipboard-publisher.c'),
+      '-ldl',
+      '-o',
+      output
+    ], { stdio: 'inherit', cwd: root })
+
+    if (gccResult.status === 0 && existsSync(output)) {
+      chmodSync(output, 0o755)
+      verifyOutput()
+      writeFileSync(stamp, fingerprint)
+      return output
+    }
+  }
   const imageHash = createHash('sha256')
     .update(readFileSync(join(nativeDir, 'Dockerfile')))
     .digest('hex')
