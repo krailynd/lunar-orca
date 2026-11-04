@@ -687,6 +687,22 @@ body:has(> [data-slot='dialog-overlay'], > [data-slot='sheet-overlay'])
   :where(button:disabled) {
     cursor: default;
   }
+
+  /* Performance & Rendering Optimizations: Subtree containment & GPU composite layers */
+  .contain-paint {
+    contain: paint;
+  }
+
+  .contain-content {
+    contain: content;
+    content-visibility: auto;
+  }
+
+  /* Smooth spring physics and reduced jitter */
+  .spring-transition {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-duration: 240ms;
+  }
 }
 
 /* Tailwind must generate this utility; a plain class silently emits no scrollbar-none CSS. */
@@ -4343,4 +4359,15 @@ html.native-shell:not(.dark) .bg-sidebar {
   background: rgba(255, 255, 255, 0.96) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* Tree Connectors & Worktree Item Micro-animations */
+[data-worktree-row-key] {
+  transition:
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.15s ease-out;
+}
+
+[data-worktree-row-key]:hover {
+  transform: translateX(1px);
 }
