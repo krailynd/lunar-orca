@@ -1,16 +1,6 @@
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  Activity,
-  Coffee,
-  Laptop,
-  MessageSquare,
-  RefreshCw,
-  Send,
-  Building2,
-  FolderGit2,
-  ChevronDown
-} from 'lucide-react'
+import { RefreshCw, Building2 } from 'lucide-react'
 import { OfficeCanvas } from './OfficeCanvas'
 import {
   getSharedOfficeEngine,
@@ -19,15 +9,17 @@ import {
 } from './office-engine-singleton'
 import type { PublicOffice } from './types'
 import { getOfficeForWorkspace, PIXEL_OFFICE_LAYOUT } from './office-workspace-teams'
-import { useAppStore } from '@/store'
 import { useActiveWorktree, useAllWorktrees } from '@/store/selectors'
 import { useOfficeRealtimeSync } from './use-office-realtime-sync'
+import { WorkspaceTreeDropdown } from './WorkspaceTreeDropdown'
+import { useHerdrSessions } from '@/lib/useHerdrSessions'
+import { SelectedEmployeeCard } from './SelectedEmployeeCard'
 
 export default function AgentsOfficePage(): React.JSX.Element {
   const engine = getSharedOfficeEngine()
+  const { focusPane, activeHerdrPanes } = useHerdrSessions()
   const worktrees = useAllWorktrees()
   const activeWorktree = useActiveWorktree()
-  const openOrlack = useAppStore((state) => state.openOrlackPage)
 
   const [selectedWorkspaceName, setSelectedWorkspaceName] = useState(
     activeWorktree?.displayName || worktrees[0]?.displayName || 'lunar-orca'
@@ -121,16 +113,26 @@ export default function AgentsOfficePage(): React.JSX.Element {
     )
   }, [engine, selectedAgent, selectedWorkspaceName])
 
-  const filteredAgents = office.agents.filter((ag) => {
-    const char = engine.chars.get(ag.id)
-    if (filter === 'working') {
-      return char?.working || char?.seated
+  const filteredAgents = useMemo(() => {
+    // Tomar agentes base del office más subagentes dinámicos registrados en el engine
+    const allOfficeAgents = [...office.agents]
+    for (const char of engine.chars.values()) {
+      if (!allOfficeAgents.some((a) => a.id === char.agent.id)) {
+        allOfficeAgents.push(char.agent)
+      }
     }
-    if (filter === 'resting') {
-      return !char?.seated
-    }
-    return true
-  })
+
+    return allOfficeAgents.filter((ag) => {
+      const char = engine.chars.get(ag.id)
+      if (filter === 'working') {
+        return char?.working || char?.seated
+      }
+      if (filter === 'resting') {
+        return !char?.seated
+      }
+      return true
+    })
+  }, [office.agents, engine.chars, filter])
 
   return (
     <div className="flex h-full w-full flex-col bg-background text-foreground select-none">
@@ -143,22 +145,11 @@ export default function AgentsOfficePage(): React.JSX.Element {
           </div>
 
           {/* Project / Workspace Dropdown */}
-          <div className="relative flex items-center">
-            <FolderGit2 className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={selectedWorkspaceName}
-              onChange={(e) => setSelectedWorkspaceName(e.target.value)}
-              className="appearance-none rounded-md border border-border bg-background py-1 pl-8 pr-7 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
-            >
-              <option value="lunar-orca">Oficina: lunar-orca (HQ)</option>
-              {worktrees.map((wt) => (
-                <option key={wt.id} value={wt.displayName}>
-                  Oficina: {wt.displayName}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-          </div>
+          <WorkspaceTreeDropdown
+            selectedWorkspaceName={selectedWorkspaceName}
+            onSelectWorkspace={(name) => setSelectedWorkspaceName(name)}
+            worktrees={worktrees}
+          />
 
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
             {office.agents.length} empleados asignados
@@ -275,80 +266,17 @@ export default function AgentsOfficePage(): React.JSX.Element {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Empleado Seleccionado
               </h2>
-              {selectedAgent ? (
-                <div className="mt-3 rounded-lg border border-border bg-background/80 p-3 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-md font-bold text-white shadow"
-                      style={{ backgroundColor: selectedAgent.appearance.shirt }}
-                    >
-                      {selectedAgent.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 font-medium text-foreground">
-                        <span>{selectedAgent.name}</span>
-                        {selectedAgent.lead ? (
-                          <span className="rounded bg-annotation-highlight/20 px-1 py-0.2 text-[9px] font-bold text-annotation-highlight">
-                            LEAD
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{selectedAgent.role}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 space-y-2 border-t border-border pt-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Ubicación:</span>
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium bg-annotation-highlight/10 text-annotation-highlight">
-                        <Laptop className="h-3 w-3" /> Escritorio #{selectedAgent.seat + 1}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 pt-2">
-                      <button
-                        onClick={handleMakeTalk}
-                        className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary/80 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary transition"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        <span>Hacer hablar (Burbuja)</span>
-                      </button>
-
-                      <button
-                        onClick={handleGoToBoard}
-                        className="flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary/80 py-1.5 text-xs font-medium text-secondary-foreground hover:bg-secondary transition"
-                      >
-                        <span>📋 Ir a la Pizarra</span>
-                      </button>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          onClick={handleSendToLounge}
-                          className="flex items-center justify-center gap-1 rounded-md border border-border bg-secondary/60 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-                        >
-                          <Coffee className="h-3 w-3" />
-                          <span>Al Lounge</span>
-                        </button>
-                        <button
-                          onClick={handleSendToDesk}
-                          className="flex items-center justify-center gap-1 rounded-md border border-border bg-secondary/60 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-                        >
-                          <Activity className="h-3 w-3" />
-                          <span>Al Escritorio</span>
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={() => openOrlack()}
-                        className="mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-primary py-1.5 text-xs font-medium text-primary-foreground shadow transition hover:opacity-90"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        <span>Abrir chat en Orlack</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+              <SelectedEmployeeCard
+                selectedAgent={selectedAgent}
+                selectedWorkspaceName={selectedWorkspaceName}
+                worktrees={worktrees}
+                activeHerdrPanes={activeHerdrPanes}
+                onMakeTalk={handleMakeTalk}
+                onGoToBoard={handleGoToBoard}
+                onSendToLounge={handleSendToLounge}
+                onSendToDesk={handleSendToDesk}
+                onFocusPane={focusPane}
+              />
             </div>
 
             {/* Roster of agents in current Office */}
