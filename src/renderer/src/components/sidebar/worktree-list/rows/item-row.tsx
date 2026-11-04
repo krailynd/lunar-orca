@@ -23,6 +23,8 @@ import { stopNestedWorktreeCardBubble } from './header-event-guards'
 import type { WorktreeItemRow } from '../listing/renderable-rows'
 import { forwardOptionPressToCardSurface, getWorktreeOptionId } from './option-dom'
 import type { WorktreeRowDragState } from '../drag/row-state'
+import { WorktreeAgentBranch } from './WorktreeAgentBranch'
+import type { HerdrPaneInfo } from '../../../../../../shared/herdr-types'
 
 export type WorktreeItemRowContext = {
   settings: AppState['settings']
@@ -39,6 +41,8 @@ export type WorktreeItemRowContext = {
   highlightedRevealRowKey: string | null
   selectedWorktreeIds: ReadonlySet<string>
   selectedWorktrees: readonly Worktree[]
+  herdrPanesByWorktree?: ReadonlyMap<string, HerdrPaneInfo[]>
+  onHerdrPaneClick?: (pane: HerdrPaneInfo) => void
   getActiveSurfaceVariant: (row: WorktreeItemRow) => ActiveSurfaceVariant
   getLineageToggleHandler: (groupKey: string) => LineageToggleHandler
   onSelectionGesture: (event: React.MouseEvent<HTMLElement>, worktree: Worktree) => boolean
@@ -169,6 +173,26 @@ export function renderWorktreeItemRow(
         paddingLeft: surfaceInset > 0 ? `${surfaceInset}px` : undefined
       }}
     >
+      {/* Tree branch connector lines */}
+      {itemRow.depth > 0 || ctx.groupBy === 'repo' ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 bottom-0 z-10"
+          style={{ width: `${Math.max(surfaceInset, 20)}px` }}
+        >
+          {/* Vertical tree guide line */}
+          <div
+            className="absolute top-0 bottom-0 w-px bg-border/40 group-hover:bg-primary/40 transition-colors"
+            style={{ left: `${Math.max(10, surfaceInset > 0 ? surfaceInset - 6 : 12)}px` }}
+          />
+          {/* Tree L branch connector with rounded curve */}
+          <div
+            className="absolute top-0 h-1/2 w-3 rounded-bl-[6px] border-b border-l border-border/70 group-hover:border-primary/50 transition-colors"
+            style={{ left: `${Math.max(10, surfaceInset > 0 ? surfaceInset - 6 : 12)}px` }}
+          />
+        </div>
+      ) : null}
+
       <WorktreeCard
         worktree={itemRow.worktree}
         repo={itemRow.repo}
@@ -210,6 +234,15 @@ export function renderWorktreeItemRow(
           itemRow.lineageGroupKey ? ctx.getLineageToggleHandler(itemRow.lineageGroupKey) : undefined
         }
       />
+
+      {/* Render detected live agent harness (Herdr / π) sub-branch nodes */}
+      {ctx.herdrPanesByWorktree?.get(itemRow.worktree.id)?.length ? (
+        <WorktreeAgentBranch
+          panes={ctx.herdrPanesByWorktree.get(itemRow.worktree.id) || []}
+          surfaceInset={surfaceInset}
+          onPaneClick={ctx.onHerdrPaneClick}
+        />
+      ) : null}
     </div>
   )
 }

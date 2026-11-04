@@ -116,6 +116,25 @@ export function renderFolderWorkspaceVirtualRow(args: {
         className="relative"
         style={surfaceInset > 0 ? { paddingLeft: surfaceInset } : undefined}
       >
+        {/* Tree branch connector lines for folder workspaces */}
+        {ctx.groupBy !== 'none' || surfaceInset > 0 ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-0 top-0 bottom-0 z-10"
+            style={{ width: `${Math.max(surfaceInset, 20)}px` }}
+          >
+            {/* Vertical tree guide line */}
+            <div
+              className="absolute top-0 bottom-0 w-px bg-border/40 group-hover:bg-primary/40 transition-colors"
+              style={{ left: `${Math.max(10, surfaceInset > 0 ? surfaceInset - 6 : 12)}px` }}
+            />
+            {/* Tree L branch connector with rounded curve */}
+            <div
+              className="absolute top-0 h-1/2 w-3 rounded-bl-[6px] border-b border-l border-border/70 group-hover:border-primary/50 transition-colors"
+              style={{ left: `${Math.max(10, surfaceInset > 0 ? surfaceInset - 6 : 12)}px` }}
+            />
+          </div>
+        ) : null}
         <WorktreeCard
           worktree={folderWorktree}
           repo={undefined}

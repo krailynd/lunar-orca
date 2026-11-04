@@ -30,6 +30,7 @@ import { EMPTY_PROJECT_GROUPS, type VirtualizedWorktreeViewportProps } from './v
 import { useWorktreeDropCommitContext } from '../drag/use-drop-commit-context'
 import { buildWorktreeVirtualRowContext } from './virtual-row-context'
 import { renderWorktreeVirtualRow } from '../rows/virtual-row-dispatch'
+import { useHerdrPanesForRows } from './use-herdr-panes-for-rows'
 
 const WORKTREE_SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
   // Why: TanStack Virtual owns scroll correction; native overflow anchoring fights it and causes jumps.
@@ -55,7 +56,6 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
     scrollAnchorRef
   } = props
   const scrollRef = useRef<HTMLDivElement>(null)
-  // Why: callback-ref only mutates scrollRef; state re-runs the scroll-to-top listener attach.
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const settings = useAppStore((s) => s.settings)
   const worktreeVisibilityDefaultsByHost = useAppStore((s) => s.worktreeVisibilityDefaultsByHost)
@@ -318,6 +318,8 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
     markScrollMovement()
   }, [markScrollMovement])
 
+  const { herdrPanesByWorktree, handleHerdrPaneClick } = useHerdrPanesForRows(renderRows)
+
   const rowContext = buildWorktreeVirtualRowContext({
     props,
     renderRows,
@@ -337,6 +339,8 @@ export const VirtualizedWorktreeViewport = React.memo(function VirtualizedWorktr
     statusDrag,
     nativeDrag,
     headerDrag,
+    herdrPanesByWorktree,
+    onHerdrPaneClick: handleHerdrPaneClick,
     projectHeaderHostContexts,
     getCachedFolderWorkspacePathStatus,
     getLineageToggleHandler,

@@ -19,6 +19,7 @@ import { getRepoOwnerWorktreeVisibilityDefaults } from '../../../../store/worktr
 
 import type { ProjectHeaderHostContext } from '../rows/project-header-host-context'
 import type { RepoSshGateResolver } from '@/hooks/use-repo-ssh-gate-resolver'
+import type { HerdrPaneInfo } from '../../../../../../shared/herdr-types'
 
 type BuildArgs = {
   props: VirtualizedWorktreeViewportProps
@@ -49,6 +50,8 @@ type BuildArgs = {
     worktree: Worktree,
     rowKey: string
   ) => void
+  herdrPanesByWorktree?: ReadonlyMap<string, HerdrPaneInfo[]>
+  onHerdrPaneClick?: (pane: HerdrPaneInfo) => void
 }
 
 export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtualRowContext {
@@ -127,6 +130,8 @@ export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtual
       highlightedRevealRowKey: reveal.highlightedRevealRowKey,
       selectedWorktreeIds: props.selectedWorktreeIds,
       selectedWorktrees: props.selectedWorktrees,
+      herdrPanesByWorktree: args.herdrPanesByWorktree,
+      onHerdrPaneClick: args.onHerdrPaneClick,
       getActiveSurfaceVariant: primaryActive.getActiveSurfaceVariant,
       getLineageToggleHandler: args.getLineageToggleHandler,
       onSelectionGesture: props.onSelectionGesture,
