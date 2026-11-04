@@ -1,5 +1,5 @@
-import { useShallow } from 'zustand/react/shallow'
 import { canShowRightSidebarForView } from '@/lib/right-sidebar-visibility'
+import { runBuiltInOrReplacement } from '@/lib/plugin-command-replacements'
 import { isFloatingWorkspacePanelFocused } from '@/lib/floating-workspace-terminal-actions'
 import { hasVisibleOverlay } from '@/lib/visible-overlay'
 import { requestScrollToCurrentWorkspaceRevealAndRename } from '@/lib/scroll-to-current-workspace-status'
@@ -19,12 +19,17 @@ import {
 import { useAppStore } from '../store'
 import type { usePluginCommands } from '@/store/plugin-panels'
 import { isGitRepoKind } from '../../../shared/repo-kind'
+import { openPluginsSettings } from '@/lib/open-plugins-settings'
+import { resolveActiveTabRenameTarget } from './active-tab-rename-target'
+import { createPluginsSettingsShortcutHandler } from './plugin-settings-shortcut-handler'
 import type {
   KeybindingActionId,
   KeybindingContext,
   PhysicalModifierToken
 } from '../../../shared/keybindings'
 import { shortcutPlatform } from './app-window-chrome'
+export { useAppShortcutActions } from './use-app-shortcut-actions'
+import type { useAppShortcutActions } from './use-app-shortcut-actions'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 
@@ -62,19 +67,6 @@ export type AppShortcutState = {
   workspaceChromeActive: boolean
 }
 
-export function useAppShortcutActions() {
-  return useAppStore(
-    useShallow((s) => ({
-      toggleSidebar: s.toggleSidebar,
-      toggleRightSidebar: s.toggleRightSidebar,
-      setRightSidebarOpen: s.setRightSidebarOpen,
-      setRightSidebarTab: s.setRightSidebarTab,
-      showRightSidebarFiles: s.showRightSidebarFiles,
-      showRightSidebarSearch: s.showRightSidebarSearch,
-      openDiffNotesSendMenuForActiveWorktree: s.openDiffNotesSendMenuForActiveWorktree
-    }))
-  )
-}
 
 export function getKeybindingContext(target: EventTarget | null): KeybindingContext {
   return target instanceof HTMLElement && target.classList.contains('xterm-helper-textarea')
@@ -82,24 +74,12 @@ export function getKeybindingContext(target: EventTarget | null): KeybindingCont
     : 'app'
 }
 
-/** Terminal rename uses its backing entity ID; structured chat uses its unified tab ID. activeTabId stays on the last terminal, matching TabGroupPanel resolution. */
-function resolveRenameTargetTabId(activeWorktreeId: string | null): string | null {
-  const store = useAppStore.getState()
-  if (store.activeTabType === 'terminal') {
-    return store.activeTabId
-  }
-  if (store.activeTabType !== 'agent-session' || !activeWorktreeId) {
-    return null
-  }
-  const activeTab = store.getActiveTab(activeWorktreeId)
-  return activeTab?.contentType === 'agent-session' ? activeTab.id : null
-}
-
-/** Return whether each action claimed the chord so unavailable surfaces fall through. Palette/menu invocations omit input. */
 export function createAppCommandHandlers(
   state: AppShortcutState,
   input?: ShortcutDispatchInput,
-  keybindingContext: KeybindingContext = 'app'
+  keybindingContext: KeybindingContext = 'app',
+  /** A plugin's `commands.run`: Orca's own action, never a plugin replacement (no loops). */
+  builtInOnly = false
 ): Map<KeybindingActionId, () => boolean> {
   const {
     activeView,
@@ -128,7 +108,12 @@ export function createAppCommandHandlers(
         keybindings
       })
     }
-    run()
+    // A plugin command may replace the action; it falls back to `run`.
+    if (builtInOnly) {
+      run()
+    } else {
+      runBuiltInOrReplacement(actionId, run)
+    }
     return true
   }
   const revealRightSidebarTab = (
@@ -211,8 +196,12 @@ export function createAppCommandHandlers(
         if (!workspaceChromeActive || floatingWorkspaceFocused) {
           return false
         }
-        const tabId = resolveRenameTargetTabId(activeWorktreeId)
-        return tabId ? claim('tab.rename', () => requestTerminalTabRename(tabId)) : false
+        // Resolve both terminal and structured-chat rename targets; a terminal-only gate silently ignores chat.
+        const tabId = resolveActiveTabRenameTarget(activeWorktreeId, useAppStore.getState())
+        if (!tabId) {
+          return false
+        }
+        return claim('tab.rename', () => requestTerminalTabRename(tabId))
       }
     ],
     [
@@ -258,6 +247,12 @@ export function createAppCommandHandlers(
           ? claim('view.tasks', () => store.openTaskPage())
           : false
       }
+    ],
+    [
+      'view.plugins',
+      createPluginsSettingsShortcutHandler(input?.target, () =>
+        claim('view.plugins', openPluginsSettings)
+      )
     ],
     [
       'sidebar.right.toggle',

@@ -1,11 +1,12 @@
 /* oxlint-disable max-lines, react-doctor/no-adjust-state-on-prop-change -- Why: selection annotations and vim integration are synchronized from Monaco layout APIs. */
 import React, { useRef, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import Editor, { type Monaco } from '@monaco-editor/react'
-import type { editor } from 'monaco-editor'
+import Editor from '@monaco-editor/react'
+import type { editor, IRange } from 'monaco-editor'
 import type { MarkdownDocument } from '../../../../shared/filesystem-entry-types'
 import { useAppStore } from '@/store'
 import '@/lib/monaco-setup'
-import { computeEditorFontSize, resolveEditorFontFamily } from '@/lib/editor-font-zoom'
+import { monacoTypographyOptions } from '@/lib/editor-typography'
+import { useEditorTypography } from '@/hooks/use-editor-typography'
 
 import { useContextualCopySetup } from './useContextualCopySetup'
 import {
@@ -24,60 +25,18 @@ import { monacoFindOptions } from './monaco-find-options'
 import { useMonacoRevealScheduler } from './use-monaco-reveal-scheduler'
 import type { MonacoContentSyncMode } from './monaco-content-sync'
 
-const ZED_DEEP_CARBON_THEME_NAME = 'orca-zed-deep-carbon'
-let zedDeepCarbonThemeRegistered = false
-
-// Why: one registration per renderer; @monaco-editor/react calls this on every mount.
-function registerZedDeepCarbonTheme(monaco: Monaco): void {
-  if (zedDeepCarbonThemeRegistered) {
-    return
-  }
-  zedDeepCarbonThemeRegistered = true
-  monaco.editor.defineTheme(ZED_DEEP_CARBON_THEME_NAME, {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'comment', foreground: '6b7280', fontStyle: 'italic' },
-      { token: 'keyword', foreground: 'fb4934' },
-      { token: 'string', foreground: 'b8bb26' },
-      { token: 'number', foreground: 'd3869b' },
-      { token: 'type', foreground: 'fabd2f' },
-      { token: 'type.identifier', foreground: 'fabd2f' },
-      { token: 'function', foreground: '8ec07c' },
-      { token: 'variable', foreground: 'd5d8da' }
-    ],
-    colors: {
-      'editor.background': '#18191c',
-      'editor.foreground': '#d5d8da',
-      'editorLineNumber.foreground': '#504945',
-      'editorLineNumber.activeForeground': '#b8bb26',
-      'editorCursor.foreground': '#b8bb26',
-      'editor.selectionBackground': '#3c4043',
-      'editor.inactiveSelectionBackground': '#2a2d30',
-      'editor.lineHighlightBackground': '#1c1f20eb',
-      'editor.lineHighlightBorder': '#282c2de0',
-      'editorGutter.background': '#18191c',
-      'editorIndentGuide.background1': '#282c2d',
-      'editorIndentGuide.activeBackground1': '#504945',
-      'editorWidget.background': '#1c1f20',
-      'editorWidget.border': '#282c2d',
-      'editorSuggestWidget.background': '#1c1f20',
-      'editorHoverWidget.background': '#1c1f20',
-      'editorBracketMatch.background': '#3c404366',
-      'editorBracketMatch.border': '#b8bb26',
-      'scrollbarSlider.background': '#50494533',
-      'scrollbarSlider.hoverBackground': '#50494566',
-      'scrollbarSlider.activeBackground': '#50494599'
-    }
-  })
-}
 import { useMonacoContentSyncBridge } from './use-monaco-content-sync-bridge'
 import { useMonacoMarkdownAnnotations } from './use-monaco-markdown-annotations'
 import { useMonacoEditorDecorations } from './use-monaco-editor-decorations'
 import { useMonacoEditorMount } from './use-monaco-editor-mount'
-import { useDocumentDarkTheme } from '@/hooks/use-document-dark-theme'
 import { snapshotMonacoViewState } from './monaco-view-state-persistence'
 import { MonacoMarkdownAnnotationOverlay } from './MonacoMarkdownAnnotationOverlay'
+import { usePluginSyntaxLanguage } from './use-plugin-syntax-language'
+import {
+  PLUGIN_SYNTAX_EDITOR_OPTIONS,
+  applyModelLanguage
+} from '@/lib/monaco-languages/plugin-syntax-editor-options'
+import { useMonacoTheme } from '@/hooks/use-monaco-theme'
 import { useEditorModelRekeyCarry } from './editor-model-rekey-carry'
 
 type MonacoEditorProps = {
@@ -112,7 +71,7 @@ export default function MonacoEditor({
   viewStateId,
   relativePath,
   content,
-  language,
+  language: coreLanguage,
   onContentChange,
   onSave,
   revealLine,
@@ -131,8 +90,13 @@ export default function MonacoEditor({
   const editorContainerRef = useRef<HTMLDivElement | null>(null)
   const [mountedEditor, setMountedEditor] = useState<editor.IStandaloneCodeEditor | null>(null)
   const [autoHeightContentHeight, setAutoHeightContentHeight] = useState<number | null>(null)
+  const language = usePluginSyntaxLanguage(filePath, coreLanguage)
   const languageRef = useRef(language)
   languageRef.current = language
+  useEffect(
+    () => applyModelLanguage([mountedEditor?.getModel()], language),
+    [mountedEditor, language]
+  )
   const unregisterFileSearchSelectionRef = useRef<(() => void) | null>(null)
   const { setupCopy, toastNode } = useContextualCopySetup()
   // Cancel pending throttled writes before snapshotting final scroll on unmount.
@@ -146,14 +110,12 @@ export default function MonacoEditor({
   contentSyncModeRef.current = readOnly && liveTail ? 'read-only-live-tail' : 'undoable'
 
   const settings = useAppStore((s) => s.settings)
-  const editorFontZoomLevel = useAppStore((s) => s.editorFontZoomLevel)
   const setPendingEditorReveal = useAppStore((s) => s.setPendingEditorReveal)
   const setEditorCursorLine = useAppStore((s) => s.setEditorCursorLine)
-  const editorFontSize = computeEditorFontSize(
-    settings?.terminalFontSize ?? 13,
-    editorFontZoomLevel
-  )
-  const editorFontFamily = resolveEditorFontFamily(settings)
+  const typography = useEditorTypography()
+  const typographyOptions = useMemo(() => monacoTypographyOptions(typography), [typography])
+  // Mirrors Monaco's automatic spacing closely enough to size before mount.
+  const autoHeightLineHeight = typography.lineHeight || Math.ceil(typography.fontSize * 1.45)
   const editorWordWrap = settings?.editorWordWrap
   const modelOwnerKey = useAppStore((state) => {
     const file = state.openFiles?.find((entry) => entry.id === fileId)
@@ -170,12 +132,11 @@ export default function MonacoEditor({
     if (!autoHeight) {
       return null
     }
-    return getMonacoAutoHeightForContent(content, Math.ceil(editorFontSize * 1.45))
-  }, [autoHeight, content, editorFontSize])
+    return getMonacoAutoHeightForContent(content, autoHeightLineHeight)
+  }, [autoHeight, content, autoHeightLineHeight])
   const renderedEditorHeight = autoHeight
     ? (autoHeightContentHeight ?? estimatedAutoHeight ?? 80)
     : null
-  const autoHeightLineHeight = Math.ceil(editorFontSize * 1.45)
   const autoHeightUsesInternalScroll =
     autoHeight && isMonacoAutoHeightCapped(renderedEditorHeight, autoHeightLineHeight)
   // The React wrapper skips first post-remount value sync; reconcile retained models from live contentRef, never the possibly stale lastSyncedContentRef.
@@ -184,12 +145,14 @@ export default function MonacoEditor({
   const [gutterMenuOpen, setGutterMenuOpen] = useState(false)
   const [gutterMenuPoint, setGutterMenuPoint] = useState({ x: 0, y: 0 })
   const [gutterMenuLine, setGutterMenuLine] = useState(1)
-  const isDark = useDocumentDarkTheme()
+  const [gutterMenuSelection, setGutterMenuSelection] = useState<IRange | null>(null)
+  const monacoTheme = useMonacoTheme()
 
   const { queueReveal, cancelScheduledReveal, clearTransientRevealHighlight } =
     useMonacoRevealScheduler()
   const contentSync = useMonacoContentSyncBridge({
     editorRef,
+    mountedEditor,
     content,
     contentRef,
     contentSyncModeRef,
@@ -228,12 +191,11 @@ export default function MonacoEditor({
       return
     }
     editorRef.current.updateOptions({
-      fontSize: editorFontSize,
-      fontFamily: editorFontFamily,
+      ...typographyOptions,
       ...buildFileEditorWordWrapOptions(editorWordWrap),
       readOnly
     })
-  }, [editorFontFamily, editorFontSize, editorWordWrap, readOnly])
+  }, [typographyOptions, editorWordWrap, readOnly])
 
   const decorations = useMonacoEditorDecorations({
     editorRef,
@@ -269,7 +231,12 @@ export default function MonacoEditor({
     contentSync,
     decorations,
     annotations,
-    gutterMenu: { setGutterMenuOpen, setGutterMenuPoint, setGutterMenuLine }
+    gutterMenu: {
+      setGutterMenuOpen,
+      setGutterMenuPoint,
+      setGutterMenuLine,
+      setGutterMenuSelection
+    }
   })
 
   const [vimStatus, setVimStatus] = useState<VimModeStatus | null>(null)
@@ -346,9 +313,7 @@ export default function MonacoEditor({
         language={language}
         // Use defaultValue because Orca owns later content sync; controlled values would duplicate setValue.
         defaultValue={content}
-        theme={isDark ? ZED_DEEP_CARBON_THEME_NAME : 'vs'}
-        beforeMount={registerZedDeepCarbonTheme}
-        onChange={contentSync.handleChange}
+        theme={monacoTheme}
         onMount={handleMount}
         options={{
           dropIntoEditor: { enabled: false },
@@ -357,12 +322,16 @@ export default function MonacoEditor({
           // Monaco 0.55 forcibly disables diff sub-editor minimaps; only file editors honor this setting.
           minimap: { enabled: settings?.editorMinimapEnabled ?? false },
           scrollBeyondLastLine: false,
+          ...PLUGIN_SYNTAX_EDITOR_OPTIONS,
           ...buildFileEditorWordWrapOptions(editorWordWrap),
-          fontSize: editorFontSize,
-          fontFamily: editorFontFamily,
+          ...typographyOptions,
           lineNumbers: 'on',
           renderLineHighlight: 'line',
           automaticLayout: true,
+          unicodeHighlight: {
+            ambiguousCharacters: language !== 'markdown',
+            invisibleCharacters: true
+          },
           tabSize: 2,
           readOnly,
           scrollbar: autoHeight
@@ -429,8 +398,11 @@ export default function MonacoEditor({
         onOpenChange={setGutterMenuOpen}
         point={gutterMenuPoint}
         line={gutterMenuLine}
+        selection={gutterMenuSelection}
+        fileId={fileId}
         filePath={filePath}
         relativePath={relativePath}
+        worktreeId={worktreeId}
       />
     </div>
   )

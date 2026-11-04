@@ -1,14 +1,18 @@
 import { app, BrowserWindow, nativeTheme, powerMonitor, screen } from 'electron'
+import { release } from 'node:os'
 import { join } from 'node:path'
 import { getAppIconPath } from '../app-icon'
 import { browserManager } from '../browser/browser-manager'
 import { getBrowserClientHostId } from '../browser/browser-client-host-id'
 import { formatBrowserClientHostIdArgument } from '../../shared/browser-client-host-id-argument'
+import { formatWindowMaterialArgument, resolveWindowMaterial } from '../../shared/window-material'
+import { windowMaterialOptions } from './window-material-options'
+import { rememberWindowMaterial } from './window-material-suppression'
 import { markSystemSessionEnding } from '../crash-reporting/expected-teardown-state'
 import { recordDurableCrashBreadcrumb } from '../crash-reporting/durable-crash-breadcrumb'
 import { clearTrustedUIRendererWebContentsId, setTrustedUIRendererWebContentsId } from '../ipc/ui'
 import { flushUnsavedCloudSessions } from '../orca-profiles/profile-cloud-session-owner'
-import type { Store } from '../persistence'
+import type { Store } from '../persistence/loading-store/store'
 import { closeDashboardPopout } from './dashboard-popout-window'
 import { closeWorkspaceSpaceWindow } from './workspace-space-window'
 import {
@@ -20,6 +24,12 @@ import { mainWindowLoadErrorCode } from './main-window-load-error-code'
 import { installMainWindowFocusLifecycle } from './main-window-focus-lifecycle'
 import { installMainWindowShortcutRouting } from './main-window-shortcut-routing'
 import { installMainWindowStateLifecycle } from './main-window-state-lifecycle'
+import { stopHiddenWindowFramePumpOnShow } from './hidden-window-frame-pump'
+import { wslHostsWindowArguments } from '../wsl/wsl-host-gate'
+import {
+  formatHiddenWindowFramePumpArgument,
+  shouldPumpHiddenWindowFrames
+} from '../../shared/hidden-window-frame-pump'
 import {
   forceRepaint,
   installMacosVisibilityRepaint,
@@ -32,7 +42,7 @@ import {
 import { installMainWindowWebviewSecurity } from './main-window-webview-security'
 import { rectHasVisibleAreaOnAnyDisplay } from './window-bounds-validation'
 import { installWindowsPathRegistryChangeListener } from '../pty/windows-path-registry-change'
-import { recordAgentSessionRuntimeEnd } from '../runtime/agent-session-runtime-end-record'
+import { recordAgentSessionRuntimeEnd } from '../runtime/agent-session/records/agent-session-runtime-end-record'
 
 export { WINDOW_QUIT_RENDERER_ACK_TIMEOUT_MS }
 
@@ -92,17 +102,13 @@ export function createMainWindow(
     // Webview guests have no safe transcript target; yield the dictation shortcut to the page.
     return false
   })
-  const blur = settings?.windowBackgroundBlur ?? false
-  // Why: only Windows acrylic is ever visible; macOS vibrancy+transparent sat behind our opaque background yet
-  // forced per-frame WindowServer alpha compositing (#8482). Applies at creation only, so it needs a restart.
-  const isLinux = process.platform === 'linux'
-  const opaqueBackgroundColor = nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff'
-  // Why: a transparent Linux window lets the Wayland/Hyprland compositor blend the desktop wallpaper
-  // through the app, so the shell must stay fully opaque with a solid matte color.
-  const windowBackgroundColor = isLinux ? '#18191c' : opaqueBackgroundColor
-  const platformBlurOptions =
-    blur && process.platform === 'win32' ? { backgroundMaterial: 'acrylic' as const } : {}
+  const windowMaterial = resolveWindowMaterial(
+    settings,
+    { platform: process.platform, osRelease: release() },
+    nativeTheme.prefersReducedTransparency
+  )
 
+  const pumpHiddenFrames = shouldPumpHiddenWindowFrames(process.env, process.platform)
   const mainWindow = new BrowserWindow({
     width: savedBounds?.width ?? defaultBounds.width,
     height: savedBounds?.height ?? defaultBounds.height,
@@ -115,7 +121,11 @@ export function createMainWindow(
     acceptFirstMouse: true,
     // Save menu-bar space on Windows/Linux; Alt reveals it and macOS uses the system menu.
     autoHideMenuBar: true,
-    backgroundColor: windowBackgroundColor,
+    ...windowMaterialOptions(
+      windowMaterial,
+      process.platform,
+      nativeTheme.shouldUseDarkColors ? '#0a0a0a' : '#ffffff'
+    ),
     // Keep macOS traffic lights inset; hide Windows native chrome to avoid duplicate titlebars.
     titleBarStyle:
       process.platform === 'darwin'
@@ -123,8 +133,8 @@ export function createMainWindow(
         : process.platform === 'win32'
           ? 'hidden'
           : undefined,
-    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own). transparent:false keeps the window opaque so Hyprland cannot blend the wallpaper through it.
-    ...(process.platform === 'linux' ? { frame: false, transparent: false } : {}),
+    // Why: Linux ignores titleBarStyle 'hidden'; frame:false drops the native frame so we don't get a double title bar (renderer draws its own).
+    ...(process.platform === 'linux' ? { frame: false } : {}),
     // Start at 1x traffic-light position; syncTrafficLightPosition follows zoom.
     ...(process.platform === 'darwin'
       ? {
@@ -135,15 +145,20 @@ export function createMainWindow(
         }
       : {}),
     icon: getAppIconPath(settings?.appIcon),
-    ...platformBlurOptions,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       webviewTag: true,
       // Pass host identity at birth so the renderer has it before first snapshot, without waiting for IPC registration.
-      additionalArguments: [formatBrowserClientHostIdArgument(getBrowserClientHostId())]
+      additionalArguments: [
+        formatBrowserClientHostIdArgument(getBrowserClientHostId()),
+        ...(windowMaterial === 'off' ? [] : [formatWindowMaterialArgument(windowMaterial)]),
+        ...(pumpHiddenFrames ? [formatHiddenWindowFramePumpArgument()] : []),
+        ...wslHostsWindowArguments()
+      ]
     }
   })
+  rememberWindowMaterial(mainWindow, windowMaterial)
   const rendererWebContentsId = mainWindow.webContents.id
   installWindowsPathRegistryChangeListener(mainWindow)
   // Native paste fallback is privileged; trust only the top-level renderer.
@@ -189,6 +204,9 @@ export function createMainWindow(
     store
   })
   installMainWindowWebviewSecurity(mainWindow)
+  if (pumpHiddenFrames) {
+    stopHiddenWindowFramePumpOnShow(mainWindow)
+  }
   const focus = installMainWindowFocusLifecycle({
     isWindowClosing: state.isWindowClosing,
     mainWindow,

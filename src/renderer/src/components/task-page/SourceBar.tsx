@@ -6,7 +6,6 @@ import { X, ExternalLink, List, Columns3, CalendarRange, FolderKanban, Plus } fr
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { LinearScopeSelector } from '@/components/linear-scope-selector'
-import { getGitHubProjectSourceSummary } from './task-page-source-context'
 import {
   Select,
   SelectTrigger,
@@ -14,6 +13,7 @@ import {
   SelectContent,
   SelectItem
 } from '@/components/ui/select'
+import { openAppHttpLink } from '@/lib/app-http-link-open'
 export function TaskPageSourceBar({
   model
 }: {
@@ -34,10 +34,6 @@ export function TaskPageSourceBar({
     taskSource,
     taskSourceAvailabilityNoticeByProvider,
     taskSourceContextSummary,
-    githubMode,
-    accountBackedTaskSourceHostId,
-    hostRegistryById,
-    hostLabelById,
     taskSourceManuallyChangedRef,
     setSelectedJiraIssueKey,
     setSelectedJiraIssueFallback,
@@ -58,16 +54,6 @@ export function TaskPageSourceBar({
     setLocalTasksMode,
     setLocalTaskComposerOpen
   } = model
-  const sourceSummary =
-    taskSource === 'github' && githubMode === 'project'
-      ? getGitHubProjectSourceSummary({
-          providerLabel:
-            visibleSourceOptions.find((source) => source.id === 'github')?.label ?? 'GitHub',
-          hostId: accountBackedTaskSourceHostId,
-          host: hostRegistryById.get(accountBackedTaskSourceHostId),
-          hostLabelById
-        })
-      : taskSourceContextSummary
   return (
     <div className="flex items-center justify-between gap-2">
       <div
@@ -176,9 +162,9 @@ export function TaskPageSourceBar({
         </button>
         <div
           className="hidden min-w-0 max-w-[min(420px,40vw)] items-center rounded-md border border-border/50 bg-muted/35 px-2 py-1 text-xs text-muted-foreground sm:flex"
-          title={sourceSummary.title}
+          title={taskSourceContextSummary.title}
         >
-          <span className="truncate">{sourceSummary.label}</span>
+          <span className="truncate">{taskSourceContextSummary.label}</span>
         </div>
       </div>
       {taskSource === 'linear' && linearConnected ? (
@@ -200,11 +186,11 @@ export function TaskPageSourceBar({
                 type="button"
                 variant="outline"
                 size="icon-sm"
-                onClick={() => {
+                onClick={(event) => {
                   if (!selectedLinearTeamForExternalLink?.url) {
                     return
                   }
-                  void window.api.shell.openUrl(selectedLinearTeamForExternalLink.url)
+                  openAppHttpLink(selectedLinearTeamForExternalLink.url, { event })
                 }}
                 disabled={!selectedLinearTeamForExternalLink}
                 aria-label={

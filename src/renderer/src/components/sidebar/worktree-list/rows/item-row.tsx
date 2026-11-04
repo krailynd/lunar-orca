@@ -121,6 +121,7 @@ export function renderWorktreeItemRow(
     : undefined
   const worktreeDragGroupKey = ctx.groupKeyByRowKey.get(itemRow.rowKey)
   const worktreeIdentity = getWorktreeHostIdentity(itemRow.worktree)
+  const isMultiSelected = ctx.selectedWorktreeIds.has(worktreeIdentity)
   const isLineageDropTarget =
     ctx.worktreeDragState.draggingWorktreeId &&
     (ctx.worktreeDragState.lineageDropTargetId === itemRow.worktree.id ||
@@ -134,7 +135,7 @@ export function renderWorktreeItemRow(
       key={itemRow.rowKey}
       id={getWorktreeOptionId(itemRow.rowKey)}
       role="option"
-      aria-selected={ctx.selectedWorktreeIds.has(worktreeIdentity)}
+      aria-selected={isMultiSelected}
       aria-current={isActiveWorktree ? 'page' : undefined}
       data-worktree-id={itemRow.worktree.id}
       data-worktree-host-identity={worktreeIdentity}
@@ -146,7 +147,7 @@ export function renderWorktreeItemRow(
       className={cn(
         // Why: don't transition 'transform' — it lags/flashes when TanStack Virtual repositions adjacent rows.
         'relative transition-[opacity,filter] duration-150 ease-out',
-        ctx.worktreeDragState.draggingWorktreeId === itemRow.worktree.id &&
+        ctx.worktreeDragState.draggingWorktreeId === worktreeIdentity &&
           // Why: the fixed drag preview is the affordance; a translucent source row would bleed through sticky headers/footers.
           'pointer-events-none opacity-0'
       )}
@@ -203,12 +204,13 @@ export function renderWorktreeItemRow(
         activeSurfaceVariant={
           isActiveWorktree && !forceActiveSurface ? ctx.getActiveSurfaceVariant(itemRow) : 'primary'
         }
-        isMultiSelected={ctx.selectedWorktreeIds.has(worktreeIdentity)}
+        isMultiSelected={isMultiSelected}
         revealHighlight={ctx.highlightedRevealRowKey === itemRow.rowKey}
         revealHighlightTone={
           ctx.agentSendTargetWorktreeId === itemRow.worktree.id ? 'ai' : 'default'
         }
-        selectedWorktrees={ctx.selectedWorktrees}
+        // Only selected rows act on the selection; passing it to the rest would re-render every card per click.
+        selectedWorktrees={isMultiSelected ? ctx.selectedWorktrees : undefined}
         nativeDragEnabled={false}
         isLineageDropTarget={Boolean(isLineageDropTarget)}
         contentIndent={cardContentIndent}
@@ -227,6 +229,7 @@ export function renderWorktreeItemRow(
         inPinnedSection={itemRow.sectionKey === PINNED_GROUP_KEY}
         renameRowKey={itemRow.rowKey}
         lineageChildCount={itemRow.lineageChildCount}
+        lineageChildWorktreeIds={itemRow.lineageChildWorktreeIds}
         lineageCollapsed={itemRow.lineageCollapsed}
         lineageChildren={lineageChildren}
         lineageChildrenStyle={lineageChildrenStyle}

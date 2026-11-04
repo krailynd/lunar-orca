@@ -1,4 +1,4 @@
-import type { AgentJournalMessageItem } from '../../shared/agent-session-journal-types'
+import type { AgentJournalMessageItem } from '../../shared/agent-session/journal/agent-session-journal-types'
 import { waitForPromiseWithSignal } from '../../shared/abort-signal-reason'
 import {
   StructuredAgentSessionInputNotAdmitted,
@@ -8,7 +8,7 @@ import {
 import type { AgentChatPermissionChoice } from '../../shared/agent-chat-permission-mode'
 import type { CodexSession } from './codex-structured-session-state'
 import { readCodexAutoSandbox } from './codex-structured-auto-sandbox'
-import { codexStructuredPermissionPolicy } from './codex-structured-permission-policy'
+import { codexStructuredPermissionPolicy } from '../../shared/codex-permission-policy'
 import type { CodexSandboxPolicy } from './codex-structured-sandbox-policy'
 
 type PermissionHost = {

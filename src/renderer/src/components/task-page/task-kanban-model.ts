@@ -5,7 +5,7 @@ import { findGithubWorkItemWorkspaceAttachment } from '@/lib/github-work-item-wo
 import { getWorktreeAttachmentLabel } from '@/lib/worktree-attachment-label'
 import { buildLinearIssueLinkedWorkItem } from '@/lib/linear-linked-work-item'
 import { getLinearIssueWorkspaceName } from '../../../../shared/workspace-name'
-import { bindTaskPageJiraItemSourceContext } from '../task-page-jira-item-source-context'
+import { bindTaskPageJiraItemSourceContext } from './jira/task-page-jira-item-source-context'
 import {
   getGitHubWorkItemWorkspaceSeed,
   getGitLabWorkItemWorkspaceSeed,

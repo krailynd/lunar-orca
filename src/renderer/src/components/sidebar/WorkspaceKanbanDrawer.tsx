@@ -22,6 +22,10 @@ import { useWorkspaceKanbanRenderLifecycle } from './use-workspace-kanban-render
 import { useWorkspaceKanbanDrawerLingering } from './use-workspace-kanban-drawer-lingering'
 import { buildWorktreeManualOrderCatalog } from './worktree-manual-order-catalog'
 import { selectFolderWorkspaces } from '@/store/workspace-record-selectors'
+import {
+  useAllOfferedWorkspaceStatuses,
+  useWorkspaceBoardStatuses
+} from './use-workspace-board-statuses'
 
 type WorkspaceKanbanDrawerProps = {
   leftSidebarStyle?: React.CSSProperties
@@ -60,7 +64,9 @@ function WorkspaceKanbanDrawerContent({
   const activeWorkspaceExecutionHostId = useAppStore((s) => s.activeWorkspaceExecutionHostId)
   const updateWorktreeMeta = useAppStore((s) => s.updateWorktreeMeta)
   const updateWorktreesMeta = useAppStore((s) => s.updateWorktreesMeta)
-  const workspaceStatuses = useAppStore((s) => s.workspaceStatuses)
+  const localWorkspaceStatuses = useAppStore((s) => s.workspaceStatuses)
+  const boardStatuses = useWorkspaceBoardStatuses()
+  const offeredStatuses = useAllOfferedWorkspaceStatuses()
   const setWorkspaceStatuses = useAppStore((s) => s.setWorkspaceStatuses)
   const syncTaskStatusFromWorkspaceBoard = useAppStore((s) => s.syncTaskStatusFromWorkspaceBoard)
   const setSyncTaskStatusFromWorkspaceBoard = useAppStore(
@@ -88,6 +94,7 @@ function WorkspaceKanbanDrawerContent({
     renderedBoardWorktrees,
     search: { query, setQuery, clearQuery, matchingWorktreeIds, hasQuery, isQueryTooLarge },
     worktreeById,
+    worktreeByKey,
     worktreesByStatus
   } = useWorkspaceKanbanBoardProjection({
     activeWorktreeId,
@@ -96,7 +103,7 @@ function WorkspaceKanbanDrawerContent({
     open,
     repoMap,
     sortBy,
-    workspaceStatuses
+    workspaceStatuses: boardStatuses
   })
   const {
     selectedWorktreeIds,
@@ -119,8 +126,8 @@ function WorkspaceKanbanDrawerContent({
     useWorkspaceKanbanColumnResize(workspaceBoardColumnWidth, setWorkspaceBoardColumnWidth)
   const maybeSyncWorkspaceBoardTaskStatuses = useWorkspaceBoardTaskStatusSync({
     enabled: syncTaskStatusFromWorkspaceBoard,
-    worktreesById: worktreeById,
-    workspaceStatuses
+    worktreesByKey: worktreeByKey,
+    workspaceStatuses: offeredStatuses
   })
   const {
     dropPointerDraggedWorktreesInStatus,
@@ -138,8 +145,9 @@ function WorkspaceKanbanDrawerContent({
     sortBy,
     updateWorktreeMeta,
     updateWorktreesMeta,
-    workspaceStatuses,
+    workspaceStatuses: boardStatuses,
     worktreeById,
+    worktreeByKey,
     manualOrderCatalog,
     worktreesByStatus
   })
@@ -202,7 +210,8 @@ function WorkspaceKanbanDrawerContent({
     handleRemoveStatus
   } = useWorkspaceKanbanStatusActions({
     allWorktrees,
-    workspaceStatuses,
+    workspaceStatuses: localWorkspaceStatuses,
+    boardStatuses,
     setWorkspaceStatuses,
     updateWorktreeMeta
   })
@@ -232,13 +241,13 @@ function WorkspaceKanbanDrawerContent({
 
   const activeAgentCountByStatus = useMemo(() => {
     const counts = new Map<string, number>()
-    for (const status of workspaceStatuses) {
+    for (const status of localWorkspaceStatuses) {
       const lane = laneViews.get(status.id)
       const count = lane?.items.length ?? (worktreesByStatus.get(status.id) ?? []).length
       counts.set(status.id, count)
     }
     return counts
-  }, [laneViews, workspaceStatuses, worktreesByStatus])
+  }, [laneViews, localWorkspaceStatuses, worktreesByStatus])
 
   return (
     <WorkspaceKanbanDrawerView
@@ -266,7 +275,7 @@ function WorkspaceKanbanDrawerContent({
         totalCount: boardWorktrees.length,
         onQueryChange: setQuery,
         onClearQuery: clearQuery,
-        workspaceStatuses,
+        workspaceStatuses: localWorkspaceStatuses,
         activeAgentCountByStatus,
         syncTaskStatusFromWorkspaceBoard,
         onSyncTaskStatusFromWorkspaceBoardChange: setSyncTaskStatusFromWorkspaceBoard,
@@ -281,7 +290,7 @@ function WorkspaceKanbanDrawerContent({
       }}
       laneGridProps={{
         laneScrollerRef,
-        statuses: workspaceStatuses,
+        statuses: boardStatuses,
         laneViews,
         laneFullWorktreeIds,
         hasQuery,

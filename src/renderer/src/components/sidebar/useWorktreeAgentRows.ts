@@ -1,3 +1,4 @@
+import { getStructuredAgentSessionTabsByPaneKey } from '@/components/native-chat/structured-agent-session-tabs'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { DashboardAgentRow } from '@/components/dashboard/useDashboardData'
 import { normalizeRuntimePathForComparison } from '../../../../shared/cross-platform-path'
@@ -121,6 +122,9 @@ export function useWorktreeAgentRows(worktreeId: string, active = true): Dashboa
     return applyAgentRowLineage(
       buildWorktreeAgentRows({
         tabs: tabs ?? EMPTY_TABS,
+        representedTabs: getStructuredAgentSessionTabsByPaneKey(
+          useAppStore.getState().unifiedTabsByWorktree
+        ),
         entries,
         retained,
         runtimePaneTitlesByTabId,

@@ -15,10 +15,9 @@ import type { WorktreeSidebarHeaderDrag } from '../drag/use-header-drag'
 import type { WorktreeListVirtualizer } from './use-virtualizer'
 import type { VirtualizedWorktreeViewportProps } from './viewport-props'
 import type { WorktreeVirtualRowContext } from '../rows/virtual-row-dispatch'
-import { getRepoOwnerWorktreeVisibilityDefaults } from '../../../../store/worktree-visibility-defaults-by-host'
+import type { RepoHeaderProjectActions } from '../rows/repo-header-project-actions'
 
 import type { ProjectHeaderHostContext } from '../rows/project-header-host-context'
-import type { RepoSshGateResolver } from '@/hooks/use-repo-ssh-gate-resolver'
 import type { HerdrPaneInfo } from '../../../../../../shared/herdr-types'
 
 type BuildArgs = {
@@ -29,8 +28,7 @@ type BuildArgs = {
   virtualization: WorktreeListVirtualizer
   measureVirtualRowElement: (element: HTMLDivElement | null) => void
   settings: AppState['settings']
-  worktreeVisibilityDefaultsByHost: AppState['worktreeVisibilityDefaultsByHost']
-  getRepoSshGate: RepoSshGateResolver
+  projectActions: RepoHeaderProjectActions
   newCardStyle: boolean
   folderBackedProjectGroupIds: ReadonlySet<string>
   session: WorktreeDragSession
@@ -83,7 +81,6 @@ export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtual
       collapsedGroups: props.collapsedGroups,
       workspaceStatuses: props.workspaceStatuses,
       projectGroups: args.projectGroups,
-      getRepoSshGate: args.getRepoSshGate,
       highlightedRevealRowKey: reveal.highlightedRevealRowKey,
       dragOverStatus: runtime.dragOverStatus,
       pinDragOver: runtime.pinDragOver,
@@ -91,21 +88,7 @@ export function buildWorktreeVirtualRowContext(args: BuildArgs): WorktreeVirtual
       projectHeaderHostContexts: args.projectHeaderHostContexts,
       getCachedFolderWorkspacePathStatus: args.getCachedFolderWorkspacePathStatus,
       toggleGroupWithScrollAnchor: args.toggleGroupWithScrollAnchor,
-      projectActions: {
-        getWorktreeVisibilityDefaults: (repo) =>
-          getRepoOwnerWorktreeVisibilityDefaults(
-            repo,
-            args.settings,
-            args.worktreeVisibilityDefaultsByHost
-          ),
-        onOpenRepoSettings: props.handleOpenRepoSettings,
-        onOpenWorktreeVisibility: props.handleOpenWorktreeVisibility,
-        onCreateGroupFromRepo: props.handleCreateGroupFromRepo,
-        onMoveProjectToGroup: props.handleMoveProjectToGroup,
-        onRemoveProjectFromGroup: props.handleRemoveProjectFromGroup,
-        onRemoveProject: props.handleRemoveProject,
-        onCreateForRepo: props.handleCreateForRepo
-      },
+      projectActions: args.projectActions,
       onRenameProjectGroup: props.handleRenameProjectGroup,
       onDeleteProjectGroup: props.handleDeleteProjectGroup,
       onCreateFolderWorkspace: props.handleCreateFolderWorkspace,
