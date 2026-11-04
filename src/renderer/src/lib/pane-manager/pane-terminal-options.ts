@@ -36,11 +36,13 @@ export function buildDefaultTerminalOptions(): ITerminalOptions {
     cursorStyle,
     cursorInactiveStyle: resolveTerminalCursorInactiveStyle(cursorStyle),
     fontSize: 14,
-    // Cross-platform fallback chain; keep in sync with FALLBACK_FONTS in layout-serialization.ts.
+    // Cross-platform fallback chain with first-class Nerd Font support for Starship & Powerline prompts
     fontFamily:
-      '"SF Mono", "Menlo", "Monaco", "Cascadia Mono", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "Symbols Nerd Font Mono", "MesloLGS Nerd Font", "JetBrainsMono Nerd Font", "Hack Nerd Font", monospace',
+      '"Iosevka Nerd Font", "Iosevka Nerd Font Mono", "JetBrainsMono Nerd Font", "Symbols Nerd Font Mono", "Orca Nerd Font Symbols", "MesloLGS Nerd Font", "Hack Nerd Font", "SF Mono", "Menlo", "Monaco", "Cascadia Mono", "Consolas", monospace',
     fontWeight: '300',
     fontWeightBold: '500',
+    lineHeight: 1.25,
+    letterSpacing: 0,
     scrollback: DESKTOP_TERMINAL_SCROLLBACK_ROWS_DEFAULT,
     // A small wheel multiplier offsets Orca’s taller default terminal cells.
     scrollSensitivity: DEFAULT_TERMINAL_SCROLL_SENSITIVITY,

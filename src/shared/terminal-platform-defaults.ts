@@ -2,10 +2,10 @@
 export function defaultTerminalFontFamily(): string {
   const platform = typeof process !== 'undefined' ? process.platform : ''
   if (platform === 'win32') {
-    return 'Cascadia Mono'
+    return 'Cascadia Code, Consolas'
   }
   if (platform === 'linux') {
-    return 'DejaVu Sans Mono'
+    return 'Iosevka Nerd Font Mono, JetBrainsMono Nerd Font, FiraCode Nerd Font, monospace'
   }
   return 'SF Mono' // macOS default
 }

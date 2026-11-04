@@ -1,6 +1,14 @@
 // Cross-platform monospace chain: browsers skip fonts absent on the current OS, so listing all is safe.
-// Nerd Fonts come last to cover PUA glyphs (U+E000–U+F8FF) from OMP/Powerline that standard monospace fonts lack.
+// Prioritizamos fuentes Nerd Font instaladas en el sistema (Iosevka Nerd Font, JetBrainsMono Nerd Font, etc.)
+// para soportar símbolos Powerline/Starship, prompts avanzados y glifos Unicode PUA sin descuadrar el espaciado.
 const FALLBACK_FONTS = [
+  'Iosevka Nerd Font',
+  'Iosevka Nerd Font Mono',
+  'JetBrainsMono Nerd Font',
+  'Symbols Nerd Font Mono',
+  'Orca Nerd Font Symbols',
+  'MesloLGS Nerd Font',
+  'Hack Nerd Font',
   'SF Mono',
   'Menlo',
   'Monaco',
@@ -8,11 +16,6 @@ const FALLBACK_FONTS = [
   'Consolas',
   'DejaVu Sans Mono',
   'Liberation Mono',
-  'Orca Nerd Font Symbols',
-  'Symbols Nerd Font Mono',
-  'MesloLGS Nerd Font',
-  'JetBrainsMono Nerd Font',
-  'Hack Nerd Font',
   'monospace'
 ] as const
 

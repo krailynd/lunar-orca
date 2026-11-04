@@ -31,6 +31,10 @@ class OrcaUnicodeProvider implements IUnicodeVersionProvider {
   public constructor(private readonly baseProvider: IUnicodeVersionProvider) {}
 
   public wcwidth(codepoint: number): 0 | 1 | 2 {
+    // Powerline glyphs and extra symbols (U+E0A0 - U+E0D4) are single-width cells
+    if (codepoint >= 0xe0a0 && codepoint <= 0xe0d4) {
+      return 1
+    }
     return this.baseProvider.wcwidth(codepoint)
   }
 
