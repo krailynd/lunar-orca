@@ -146,7 +146,7 @@ export function FileExplorerFilesTreePane({
       ref={fileDropOwnerRef}
       viewportRef={scrollRef}
       viewportTabIndex={-1}
-      viewportClassName="h-full min-h-0 py-2"
+      viewportClassName="h-full min-h-0 py-2 scroll-smooth"
       onWheelCapture={handleWheelCapture}
       onDragOverCapture={rootDragHandlers.onDragOverCapture}
       onDragOver={rootDragHandlers.onDragOver}

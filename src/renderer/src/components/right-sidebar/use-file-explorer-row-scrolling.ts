@@ -8,6 +8,9 @@ import type { FileExplorerRowProjection } from './file-explorer-row-projection'
 import { useFileExplorerAutoReveal } from './useFileExplorerAutoReveal'
 import { useFileExplorerReveal } from './useFileExplorerReveal'
 
+export const FILE_EXPLORER_ROW_HEIGHT = 26
+export const FILE_EXPLORER_ROW_OVERSCAN = 16
+
 type UseFileExplorerRowScrollingParams = {
   visibleRowCount: number
   inlineInputIndex: number
@@ -66,8 +69,8 @@ export function useFileExplorerRowScrolling({
   const virtualizer = useVirtualizer({
     count: totalCount,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 26,
-    overscan: 20,
+    estimateSize: () => FILE_EXPLORER_ROW_HEIGHT,
+    overscan: FILE_EXPLORER_ROW_OVERSCAN,
     getItemKey: (index) => {
       if (inlineInputIndex >= 0) {
         if (index === inlineInputIndex) {

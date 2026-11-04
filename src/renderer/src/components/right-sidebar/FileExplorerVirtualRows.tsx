@@ -216,7 +216,10 @@ export function FileExplorerVirtualRows(props: FileExplorerVirtualRowsProps): Re
             key={vItem.key}
             data-index={vItem.index}
             ref={virtualizer.measureElement}
-            className={cn('absolute left-0 right-0', isInDropTarget && 'bg-border')}
+            className={cn(
+              'absolute left-0 right-0 will-change-transform',
+              isInDropTarget && 'bg-border/70 rounded-md'
+            )}
             style={{ transform: `translateY(${vItem.start}px)` }}
           >
             <FileExplorerRow

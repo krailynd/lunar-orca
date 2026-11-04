@@ -1,16 +1,8 @@
 import React from 'react'
-import {
-  ChevronRight,
-  CircleAlert,
-  CircleSlash,
-  Folder,
-  FolderOpen,
-  Link,
-  Loader2
-} from 'lucide-react'
+import { ChevronRight, CircleAlert, CircleSlash, Link, Loader2 } from 'lucide-react'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { cn } from '@/lib/utils'
-import { MaterialFileIcon } from '@/lib/material-file-icons'
+import { MaterialFileIcon, MaterialFolderIcon } from '@/lib/material-file-icons'
 import {
   encodeWorkspaceFilePaths,
   WORKSPACE_FILE_PATH_MIME,
@@ -161,9 +153,9 @@ export function FileExplorerRow({
           data-file-explorer-row=""
           data-selected={isSelected ? 'true' : undefined}
           className={cn(
-            'flex w-full items-center gap-1 rounded-sm px-2 py-1 text-left text-xs transition-colors',
-            !isSelected && 'hover:bg-accent hover:text-foreground',
-            isSelected && 'text-accent-foreground',
+            'group relative flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs transition-colors duration-150',
+            !isSelected && 'hover:bg-accent/60 hover:text-foreground text-muted-foreground/90',
+            isSelected && 'text-accent-foreground font-medium',
             isFlashing && 'bg-amber-400/20 ring-1 ring-inset ring-amber-400/70'
           )}
           style={{ paddingLeft: `${(node.depth - displayDepthOffset) * 16 + 8}px` }}
@@ -210,6 +202,22 @@ export function FileExplorerRow({
           onClick={(e) => onClick(e)}
           onDoubleClick={onDoubleClick}
         >
+          {/* Subtle vertical indent guide lines for nested items */}
+          {node.depth - displayDepthOffset > 0 ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 top-0 bottom-0 overflow-hidden"
+              style={{ width: `${(node.depth - displayDepthOffset) * 16}px` }}
+            >
+              {Array.from({ length: node.depth - displayDepthOffset }, (_, i) => (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 w-px bg-border/25 group-hover:bg-border/40 transition-colors"
+                  style={{ left: `${i * 16 + 12}px` }}
+                />
+              ))}
+            </div>
+          ) : null}
           {node.isDirectory ? (
             <>
               <ChevronRight
@@ -219,13 +227,15 @@ export function FileExplorerRow({
                 )}
               />
               {isLoading ? (
-                <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
               ) : showLoadError ? (
-                <CircleAlert className="size-3 shrink-0 text-destructive" />
-              ) : isExpanded ? (
-                <FolderOpen className="size-3 shrink-0 text-muted-foreground" />
+                <CircleAlert className="size-3.5 shrink-0 text-destructive" />
               ) : (
-                <Folder className="size-3 shrink-0 text-muted-foreground" />
+                <MaterialFolderIcon
+                  isExpanded={isExpanded}
+                  size={15}
+                  className="shrink-0 transition-transform duration-150"
+                />
               )}
             </>
           ) : (

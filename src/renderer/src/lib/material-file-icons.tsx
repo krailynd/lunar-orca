@@ -90,9 +90,11 @@ export function MaterialFileIcon({
 
 export function MaterialFolderIcon({
   className,
+  isExpanded = false,
   size = 16
 }: {
   className?: string
+  isExpanded?: boolean
   size?: number
 }): React.JSX.Element {
   return (
@@ -104,10 +106,33 @@ export function MaterialFolderIcon({
       aria-hidden="true"
       focusable="false"
     >
-      <path
-        d="M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2h8A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"
-        fill={MATERIAL_FOLDER_COLOR}
-      />
+      {isExpanded ? (
+        <>
+          {/* Back flap */}
+          <path
+            d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2a1.5 1.5 0 0 1 1.06.44L11.5 7H19.5A1.5 1.5 0 0 1 21 8.5v3H3z"
+            fill={MATERIAL_FOLDER_COLOR}
+            opacity="0.8"
+          />
+          {/* Open front pocket */}
+          <path
+            d="M2.5 11.5h18.2a1 1 0 0 1 .98 1.2l-1.5 6a1.5 1.5 0 0 1-1.46 1.14H3.8a1.5 1.5 0 0 1-1.46-1.14l-1.5-6a1 1 0 0 1 .98-1.2h.68z"
+            fill="#f5b963"
+          />
+        </>
+      ) : (
+        <>
+          <path
+            d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2a1.5 1.5 0 0 1 1.06.44L11.5 7H19.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"
+            fill={MATERIAL_FOLDER_COLOR}
+          />
+          <path
+            d="M3 9.5h18v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"
+            fill="black"
+            opacity="0.08"
+          />
+        </>
+      )}
     </svg>
   )
 }
