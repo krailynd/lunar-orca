@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { isImeOwnedKeyboardEvent } from '@/lib/ime-composition-keyboard-event'
 import {
-  ArrowUpRight,
   Bot,
   Clock,
   Code2,
@@ -11,115 +11,32 @@ import {
   Layers,
   Plus,
   Sparkles,
-  Terminal
+  Terminal,
+  ExternalLink,
+  Github,
+  Mail
 } from 'lucide-react'
 import logo from '../../../../../resources/logo.svg'
 import creationHandsImage from '@/assets/lunar-creation-hands.jpg'
+import { HomeSessionSearchOmnibar } from './HomeSessionSearchOmnibar'
 
-export type HomeQuickAction = 'new-terminal' | 'new-project' | 'new-workspace' | 'launch' | 'mode'
+import {
+  type HomeQuickAction,
+  type RecentProject,
+  type HomeAgentUsage,
+  type HomePageHeaderProps,
+  AGENT_OPTIONS,
+  MODE_OPTIONS,
+  EMPTY_PROJECTS,
+  EMPTY_USAGE,
+  isAgentOption,
+  isModeOption,
+  greetingForHour,
+  formatClock
+} from './home-page-header-types'
+import { QuickActionRow } from './QuickActionRow'
 
-export type RecentProject = {
-  id: string
-  name: string
-  path: string
-  terminalCount: number
-  worktreeCount: number
-  lastActiveLabel: string
-}
-
-export type HomeAgentUsage = {
-  id: string
-  name: string
-  model: string
-  percent: number
-  status: 'live' | 'idle'
-}
-
-export type HomePageHeaderProps = {
-  reposCount: number
-  worktreesCount: number
-  sessionsCount: number
-  onNewWorkspace: () => void
-  userName?: string
-  recentProjects?: RecentProject[]
-  agentUsage?: HomeAgentUsage[]
-  onQuickAction?: (action: HomeQuickAction) => void
-  onSubmitPrompt?: (prompt: string) => void
-  onOpenProject?: (project: RecentProject) => void
-}
-
-const AGENT_OPTIONS = ['Pi', 'Claude', 'Codex', 'OpenCode', 'Agy'] as const
-const MODE_OPTIONS = ['Chat', 'Tarea', 'Autónomo'] as const
-
-type AgentOption = (typeof AGENT_OPTIONS)[number]
-type ModeOption = (typeof MODE_OPTIONS)[number]
-
-// Why: local type guards narrow the <select> string without an unsafe assertion.
-function isAgentOption(value: string): value is AgentOption {
-  return AGENT_OPTIONS.some((option) => option === value)
-}
-
-function isModeOption(value: string): value is ModeOption {
-  return MODE_OPTIONS.some((option) => option === value)
-}
-
-function greetingForHour(hour: number): string {
-  if (hour < 6) {
-    return 'Buenas noches'
-  }
-  if (hour < 13) {
-    return 'Buenos días'
-  }
-  if (hour < 20) {
-    return 'Buenas tardes'
-  }
-  return 'Buenas noches'
-}
-
-// Why frozen: stable empty defaults keep referential equality across renders.
-const EMPTY_PROJECTS: RecentProject[] = []
-const EMPTY_USAGE: HomeAgentUsage[] = []
-
-function formatClock(date: Date): { day: string; time: string } {
-  const day = new Intl.DateTimeFormat('es', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short'
-  })
-    .format(date)
-    .replace(/\./g, '')
-  const time = new Intl.DateTimeFormat('es', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).format(date)
-  return { day, time }
-}
-
-function QuickActionRow({
-  icon: Icon,
-  label,
-  shortcut,
-  onClick
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  shortcut: string
-  onClick: () => void
-}): React.JSX.Element {
-  return (
-    <button type="button" onClick={onClick} className="home-quick-action group">
-      <span className="home-quick-action-icon">
-        <Icon className="size-4" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col text-left">
-        <span className="truncate text-[13px] font-medium home-text-strong">{label}</span>
-        <span className="text-[10px] home-text-faint">{shortcut}</span>
-      </span>
-      <ArrowUpRight className="size-3.5 home-text-faint transition-colors group-hover:home-text-muted" />
-    </button>
-  )
-}
+export type { HomeQuickAction, RecentProject, HomeAgentUsage, HomePageHeaderProps }
 
 export function HomePageHeader({
   reposCount,
@@ -165,23 +82,49 @@ export function HomePageHeader({
     <header className="flex flex-col gap-7 pt-2 text-left">
       <div className="home-hero-banner">
         <img src={creationHandsImage} alt="" aria-hidden="true" className="home-hero-banner-art" />
-        <div className="home-hero">
-          <div className="home-hero-logo">
-            <img src={logo} alt="Lunar Orca" className="size-full object-contain" />
+        <div className="home-hero flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="home-hero-logo transition-transform hover:scale-105 duration-300">
+              <img src={logo} alt="Lunar Orca" className="size-full object-contain" />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <p className="home-hero-date">
+                <Clock className="size-3" /> {day} · {time}
+              </p>
+              <h1 className="home-hero-greeting">
+                {greeting}, <span className="home-hero-name">{userName}</span>
+              </h1>
+              <p className="home-hero-sub">
+                Orquestá agentes IA, repositorios y sesiones desde un solo lugar.
+              </p>
+            </div>
           </div>
-          <div className="flex min-w-0 flex-col">
-            <p className="home-hero-date">
-              <Clock className="size-3" /> {day} · {time}
-            </p>
-            <h1 className="home-hero-greeting">
-              {greeting}, <span className="home-hero-name">{userName}</span>
-            </h1>
-            <p className="home-hero-sub">
-              Orquestá agentes IA, repositorios y sesiones desde un solo lugar.
-            </p>
+
+          {/* Botones directos de Acceso y Contacto */}
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href="https://github.com/CinloDev"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/90 shadow-sm backdrop-blur-md transition hover:bg-white/10 hover:text-white"
+            >
+              <Github className="size-3.5" />
+              <span>Mis Mods</span>
+              <ExternalLink className="size-3 opacity-60" />
+            </a>
+            <a
+              href="mailto:contact@cinlodev.local"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/90 shadow-sm backdrop-blur-md transition hover:bg-white/10 hover:text-white"
+            >
+              <Mail className="size-3.5" />
+              <span>Contacto</span>
+            </a>
           </div>
         </div>
       </div>
+
+      {/* Omnibar Inteligente de Búsqueda de Sesiones y Worktrees */}
+      <HomeSessionSearchOmnibar />
 
       <div className="home-terminal-card">
         <div className="home-terminal-bar">
@@ -204,6 +147,9 @@ export function HomePageHeader({
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => {
+                if (isImeOwnedKeyboardEvent(event)) {
+                  return
+                }
                 if (event.key === 'Enter') {
                   event.preventDefault()
                   submitPrompt()

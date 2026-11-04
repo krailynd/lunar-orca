@@ -79,6 +79,8 @@ const SidebarNav = React.memo(function SidebarNav() {
   const showMobileButton = useAppStore((s) => shouldShowMobileButton(s.settings))
   const showArtifactsButton = useAppStore((s) => shouldShowArtifactsButton(s.settings))
   const showSkillsButton = useAppStore((s) => shouldShowSkillsButton(s.settings))
+  // Orlack desactivado temporalmente a petición del usuario para evitar conflictos
+  const SHOW_ORLACK = false
   const homeActive = activeView === 'home'
   const lunarGripActive = activeView === 'lunargrip'
   const officeActive = activeView === 'agents-office'
@@ -197,26 +199,28 @@ const SidebarNav = React.memo(function SidebarNav() {
         />
         <span className="flex-1 font-medium">Agents Office</span>
       </button>
-      <button
-        type="button"
-        onClick={openOrlackPage}
-        aria-current={orlackActive ? 'page' : undefined}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
-          orlackActive
-            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
-            : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
-        )}
-      >
-        <MessageSquare
+      {SHOW_ORLACK ? (
+        <button
+          type="button"
+          onClick={openOrlackPage}
+          aria-current={orlackActive ? 'page' : undefined}
           className={cn(
-            'size-4 shrink-0',
-            orlackActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+            orlackActive
+              ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground shadow-sm'
+              : 'text-worktree-sidebar-foreground/75 hover:bg-worktree-sidebar-foreground/8 hover:text-worktree-sidebar-foreground'
           )}
-          strokeWidth={orlackActive ? 2.25 : 1.75}
-        />
-        <span className="flex-1 font-medium">Orlack</span>
-      </button>
+        >
+          <MessageSquare
+            className={cn(
+              'size-4 shrink-0',
+              orlackActive ? 'text-workspace-status-review' : 'text-worktree-sidebar-foreground/40'
+            )}
+            strokeWidth={orlackActive ? 2.25 : 1.75}
+          />
+          <span className="flex-1 font-medium">Orlack</span>
+        </button>
+      ) : null}
       {showArtifactsButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>
