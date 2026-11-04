@@ -44,6 +44,7 @@ export type UISliceContextual = {
     | 'add-repo'
     | 'quick-open'
     | 'worktree-palette'
+    | 'omnibar'
     | 'workspace-cleanup'
     | 'project-added'
     | 'worktree-visibility'

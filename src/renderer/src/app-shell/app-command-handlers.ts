@@ -63,7 +63,6 @@ export type AppShortcutState = {
 }
 
 export function useAppShortcutActions() {
-  // One shallow action subscription avoids an equality check per action on every store mutation.
   return useAppStore(
     useShallow((s) => ({
       toggleSidebar: s.toggleSidebar,
@@ -146,21 +145,17 @@ export function createAppCommandHandlers(
   return new Map<KeybindingActionId, () => boolean>([
     [
       'worktree.history.back',
-      () => {
-        if (creationLayoutActive || !shouldShowWorktreeHistoryControls(activeView)) {
-          return false
-        }
-        return claim('worktree.history.back', () => useAppStore.getState().goBackWorktree())
-      }
+      () =>
+        !creationLayoutActive && shouldShowWorktreeHistoryControls(activeView)
+          ? claim('worktree.history.back', () => useAppStore.getState().goBackWorktree())
+          : false
     ],
     [
       'worktree.history.forward',
-      () => {
-        if (creationLayoutActive || !shouldShowWorktreeHistoryControls(activeView)) {
-          return false
-        }
-        return claim('worktree.history.forward', () => useAppStore.getState().goForwardWorktree())
-      }
+      () =>
+        !creationLayoutActive && shouldShowWorktreeHistoryControls(activeView)
+          ? claim('worktree.history.forward', () => useAppStore.getState().goForwardWorktree())
+          : false
     ],
     ['sidebar.left.toggle', () => claim('sidebar.left.toggle', () => actions.toggleSidebar())],
     [
@@ -179,7 +174,6 @@ export function createAppCommandHandlers(
       'sidebar.childWorkspaces.toggle',
       () => {
         const store = useAppStore.getState()
-        // Locally controlled dialogs do not set activeModal.
         if (
           store.activeModal !== 'none' ||
           floatingWorkspaceFocused ||
@@ -196,7 +190,6 @@ export function createAppCommandHandlers(
         }
         return claim('sidebar.childWorkspaces.toggle', () => {
           const expanding = store.collapsedGroups.has(groupKey)
-          // Match chip-click scroll anchoring to avoid viewport jumps.
           requestVirtualizedScrollAnchorRecord('[data-worktree-sidebar]')
           store.toggleCollapsedGroup(groupKey)
           if (expanding) {
@@ -207,12 +200,10 @@ export function createAppCommandHandlers(
     ],
     [
       'floatingWorkspace.maximize',
-      () => {
-        if (floatingTerminalOpen || !floatingTerminalEnabled) {
-          return false
-        }
-        return claim('floatingWorkspace.maximize', openFloatingWorkspaceMaximized)
-      }
+      () =>
+        !floatingTerminalOpen && floatingTerminalEnabled
+          ? claim('floatingWorkspace.maximize', openFloatingWorkspaceMaximized)
+          : false
     ],
     [
       'tab.rename',
@@ -220,12 +211,8 @@ export function createAppCommandHandlers(
         if (!workspaceChromeActive || floatingWorkspaceFocused) {
           return false
         }
-        // Resolve both terminal and structured-chat rename targets; a terminal-only gate silently ignores chat.
         const tabId = resolveRenameTargetTabId(activeWorktreeId)
-        if (!tabId) {
-          return false
-        }
-        return claim('tab.rename', () => requestTerminalTabRename(tabId))
+        return tabId ? claim('tab.rename', () => requestTerminalTabRename(tabId)) : false
       }
     ],
     [
@@ -248,34 +235,28 @@ export function createAppCommandHandlers(
         }
         const store = useAppStore.getState()
         const target = resolveHoveredWorkspaceDeleteTarget(store)
-        if (!target) {
-          return false
-        }
-        return claim('workspace.delete', () => {
-          deleteHoveredWorkspaceImmediately(store, target)
-        })
+        return target
+          ? claim('workspace.delete', () => deleteHoveredWorkspaceImmediately(store, target))
+          : false
       }
     ],
     [
       'workspace.openBoard',
-      () => {
-        if (activeView === 'settings') {
-          return false
-        }
-        return claim('workspace.openBoard', () => {
-          useAppStore.getState().setSidebarOpen(true)
-          window.dispatchEvent(new CustomEvent(TOGGLE_WORKSPACE_BOARD_EVENT))
-        })
-      }
+      () =>
+        activeView !== 'settings'
+          ? claim('workspace.openBoard', () => {
+              useAppStore.getState().setSidebarOpen(true)
+              window.dispatchEvent(new CustomEvent(TOGGLE_WORKSPACE_BOARD_EVENT))
+            })
+          : false
     ],
     [
       'view.tasks',
       () => {
         const store = useAppStore.getState()
-        if (activeView === 'settings' || !store.repos.some((repo) => isGitRepoKind(repo))) {
-          return false
-        }
-        return claim('view.tasks', () => store.openTaskPage())
+        return activeView !== 'settings' && store.repos.some((repo) => isGitRepoKind(repo))
+          ? claim('view.tasks', () => store.openTaskPage())
+          : false
       }
     ],
     [
@@ -308,6 +289,18 @@ export function createAppCommandHandlers(
           : revealRightSidebarTab('sidebar.sourceControl.toggle', 'source-control')
     ],
     ['sidebar.checks.toggle', () => revealRightSidebarTab('sidebar.checks.toggle', 'checks')],
-    ['sidebar.ports.toggle', () => revealRightSidebarTab('sidebar.ports.toggle', 'ports')]
+    ['sidebar.ports.toggle', () => revealRightSidebarTab('sidebar.ports.toggle', 'ports')],
+    [
+      'app.omnibar',
+      () =>
+        claim('app.omnibar', () => {
+          const store = useAppStore.getState()
+          if (store.activeModal === 'omnibar') {
+            store.closeModal()
+            return
+          }
+          store.openModal('omnibar')
+        })
+    ]
   ])
 }

@@ -230,6 +230,9 @@ export function useGlobalKeybindings(args: {
       }
 
       const handlers = createAppCommandHandlers(state, input, context)
+      if (matchShortcut('app.omnibar') && handlers.get('app.omnibar')?.()) {
+        return
+      }
       if (matchShortcut('workspace.delete') && handlers.get('workspace.delete')?.()) {
         return
       }

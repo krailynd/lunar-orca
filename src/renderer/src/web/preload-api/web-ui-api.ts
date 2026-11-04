@@ -219,6 +219,7 @@ export function createWebUiApi(): NonNullable<Partial<PreloadApi>['ui']> {
     onToggleLeftSidebar: () => noopUnsubscribe,
     onToggleRightSidebar: () => noopUnsubscribe,
     onToggleWorktreePalette: () => noopUnsubscribe,
+    onToggleOmnibar: () => noopUnsubscribe,
     onToggleFloatingTerminal: () => noopUnsubscribe,
     onTerminalShortcutCaptured: () => noopUnsubscribe,
     onOpenQuickOpen: () => noopUnsubscribe,

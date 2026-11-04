@@ -31,6 +31,7 @@ export type WindowShortcutAction =
   | { type: 'openSettings' }
   | { type: 'forceReload' }
   | { type: 'toggleWorktreePalette' }
+  | { type: 'toggleOmnibar' }
   | { type: 'toggleFloatingTerminal' }
   | { type: 'toggleLeftSidebar' }
   | { type: 'toggleRightSidebar' }
@@ -117,7 +118,6 @@ export function isRecentTabSwitcherCommitRelease(input: WindowShortcutInput): bo
     return true
   }
   const control = input.control ?? input.ctrlKey
-  // Some Electron surfaces release Tab after Control is already up; commit rather than strand the switcher.
   return isTabKey(input) && control === false
 }
 
@@ -170,17 +170,11 @@ export function resolveWindowShortcutAction(
   options: WindowShortcutResolveOptions = {}
 ): WindowShortcutAction | null {
   if (actionMatches('worktree.history.back', input, platform, keybindings, options)) {
-    return {
-      type: 'worktreeHistoryNavigate',
-      direction: 'back'
-    }
+    return { type: 'worktreeHistoryNavigate', direction: 'back' }
   }
 
   if (actionMatches('worktree.history.forward', input, platform, keybindings, options)) {
-    return {
-      type: 'worktreeHistoryNavigate',
-      direction: 'forward'
-    }
+    return { type: 'worktreeHistoryNavigate', direction: 'forward' }
   }
 
   if (actionMatches('floatingTerminal.toggle', input, platform, keybindings, options)) {
@@ -209,6 +203,10 @@ export function resolveWindowShortcutAction(
 
   if (actionMatches('worktree.palette', input, platform, keybindings, options)) {
     return { type: 'toggleWorktreePalette' }
+  }
+
+  if (actionMatches('app.omnibar', input, platform, keybindings, options)) {
+    return { type: 'toggleOmnibar' }
   }
 
   if (actionMatches('sidebar.left.toggle', input, platform, keybindings, options)) {
@@ -252,7 +250,6 @@ export function resolveWindowShortcutAction(
     return { type: 'switchRecentTab' }
   }
 
-  // Ranges have separate conflict scopes and may share a chord; workspace-first preserves deterministic historical precedence.
   const worktreeIndex = matchKeybindingDigitIndex(
     'workspace.selectByIndex',
     input,
@@ -297,6 +294,8 @@ export function getWindowShortcutActionId(action: WindowShortcutAction): Keybind
       return 'app.forceReload'
     case 'toggleWorktreePalette':
       return 'worktree.palette'
+    case 'toggleOmnibar':
+      return 'app.omnibar'
     case 'toggleFloatingTerminal':
       return 'floatingTerminal.toggle'
     case 'toggleLeftSidebar':

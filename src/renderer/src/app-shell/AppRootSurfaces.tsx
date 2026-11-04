@@ -31,6 +31,7 @@ import type { FloatingWorkspacePanelState } from './use-floating-workspace-panel
 import type { OnboardingGate } from './use-onboarding-and-feature-tips'
 
 const QuickOpen = lazy(() => import('../components/QuickOpen'))
+const Omnibar = lazy(() => import('../components/omnibar/Omnibar'))
 const WorkspaceCleanupDialog = lazy(
   () => import('../components/workspace-cleanup/WorkspaceCleanupDialog')
 )
@@ -236,6 +237,11 @@ export function AppRootSurfaces(props: {
         {mountedLazyModalIds.has('quick-open') ? (
           <ModalBoundary boundaryId="modal.quick-open" resetKey={activeModal === 'quick-open'}>
             <QuickOpen />
+          </ModalBoundary>
+        ) : null}
+        {mountedLazyModalIds.has('omnibar') ? (
+          <ModalBoundary boundaryId="modal.omnibar" resetKey={activeModal === 'omnibar'}>
+            <Omnibar />
           </ModalBoundary>
         ) : null}
         {mountedLazyModalIds.has('worktree-palette') ? (

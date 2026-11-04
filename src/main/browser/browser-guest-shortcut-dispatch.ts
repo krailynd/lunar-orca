@@ -129,6 +129,8 @@ export function forwardGuestShortcutInput(
     }
   } else if (action?.type === 'toggleWorktreePalette') {
     renderer.send('ui:toggleWorktreePalette')
+  } else if (action?.type === 'toggleOmnibar') {
+    renderer.send('ui:toggleOmnibar')
   } else if (action?.type === 'openQuickOpen') {
     renderer.send('ui:openQuickOpen')
   } else if (action?.type === 'toggleQuickCommandsMenu') {

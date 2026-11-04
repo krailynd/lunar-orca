@@ -22,6 +22,7 @@ import type { AppApi, E2EApi, PlatformApi } from './api/app-api'
 import type { AutomationsApi } from './api/automation-api'
 import type { BrowserApi } from './api/browser-api'
 import type { CliApi } from './api/cli-install-api'
+import type { HerdrApi } from './api/herdr-bridge'
 import type { CrashReportsApi, FeedbackApi } from './api/crash-report-api'
 import type { DashboardApi, TerminalPreviewApi } from './api/dashboard-api'
 import type { DocPreviewApi } from './api/doc-preview-api'
@@ -132,6 +133,7 @@ export type PreloadApi = {
   codexAccounts: CodexAccountsApi
   claudeAccounts: ClaudeAccountsApi
   cli: CliApi
+  herdr?: HerdrApi
   codexConfigSync: CodexConfigSyncApi
   preflight: PreflightApi
   notifications: NotificationsApi

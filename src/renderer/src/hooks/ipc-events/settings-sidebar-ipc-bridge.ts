@@ -170,6 +170,17 @@ export function registerSettingsAndSidebarIpcBridge(unsubs: (() => void)[]): voi
   )
 
   unsubs.push(
+    window.api.ui.onToggleOmnibar?.(() => {
+      const store = useAppStore.getState()
+      if (store.activeModal === 'omnibar') {
+        store.closeModal()
+        return
+      }
+      store.openModal('omnibar')
+    }) ?? (() => {})
+  )
+
+  unsubs.push(
     window.api.ui.onToggleFloatingTerminal(() => {
       window.dispatchEvent(new CustomEvent(TOGGLE_FLOATING_TERMINAL_EVENT))
     })

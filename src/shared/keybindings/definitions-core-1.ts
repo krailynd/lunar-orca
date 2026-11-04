@@ -43,6 +43,14 @@ export const KEYBINDING_DEFINITION_CORE_1: readonly KeybindingDefinition[] = [
     }
   },
   {
+    id: 'app.omnibar',
+    title: 'Command Palette / Omnibar',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: ['shortcut', 'global', 'omnibar', 'command', 'palette', 'search', 'jump', 'k'],
+    defaultBindings: platformBindings(['Mod+K', 'Mod+Shift+P'])
+  },
+  {
     id: 'worktree.navigateUp',
     title: 'Previous worktree',
     group: 'Global',

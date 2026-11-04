@@ -74,6 +74,11 @@ export const uiStateAndMenuCommandsApi = {
     ipcRenderer.on('ui:toggleWorktreePalette', listener)
     return () => ipcRenderer.removeListener('ui:toggleWorktreePalette', listener)
   },
+  onToggleOmnibar: (callback: () => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent) => callback()
+    ipcRenderer.on('ui:toggleOmnibar', listener)
+    return () => ipcRenderer.removeListener('ui:toggleOmnibar', listener)
+  },
   onToggleFloatingTerminal: (callback: () => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent) => callback()
     ipcRenderer.on('ui:toggleFloatingTerminal', listener)
