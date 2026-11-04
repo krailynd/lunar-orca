@@ -54,9 +54,12 @@ export async function initializeReadyRuntimeServices(): Promise<void> {
   configureRuntimeServices(runtime)
   installFirstWorkRenameHookSubscription()
   await initializeMainProcessPlugins(runtime)
+  // Optimize startup: Defer heavy starNag and non-critical hook sweeps until window is presented
   state.starNag = new StarNagService(store, state.stats!)
-  state.starNag.start()
-  state.starNag.registerIpcHandlers()
+  runAfterFirstWindowShown(() => {
+    state.starNag?.start()
+    state.starNag?.registerIpcHandlers()
+  }, 5_000)
   state.agentBrowserBridge = new AgentBrowserBridge(browserManager, {
     onTabsChanged: (worktreeId) => runtime.notifyMobileSessionTabsChanged(worktreeId)
   })

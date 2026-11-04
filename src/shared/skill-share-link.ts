@@ -3,6 +3,10 @@ const PRODUCTION_HOSTS = new Set(['app.orca.dev', 'share.onorca.dev'])
 
 export function parseSkillShareId(value: string): string | null {
   const trimmed = value.trim()
+  // Hardening: Reject any argument with shell metacharacters or dangerous control chars
+  if (/[\r\n\0;|&`$]/.test(trimmed)) {
+    return null
+  }
   if (SHARE_ID_PATTERN.test(trimmed)) {
     return trimmed
   }

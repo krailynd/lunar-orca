@@ -22,6 +22,7 @@ out/
 /build/
 release/
 native/**/.build/
+native/**/target/
 native/windows-cli-launcher/target/
 native/windows-agent-hook/target/
 # node-gyp output for the Windows native addons; generated per host and ABI.
@@ -157,3 +158,5 @@ ci-shards/
 /.build/windows-native-benchmark/
 
 .local/static-analysis-research/
+mobile/src/**/*.generated.ts
+
