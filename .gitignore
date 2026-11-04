@@ -24,6 +24,7 @@ release/
 native/**/.build/
 native/**/target/
 native/windows-cli-launcher/target/
+odd/
 native/windows-agent-hook/target/
 # node-gyp output for the Windows native addons; generated per host and ABI.
 native/windows-registry/build/
