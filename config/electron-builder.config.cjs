@@ -679,6 +679,10 @@ module.exports = {
         to: 'bin/orca-ide'
       },
       {
+        from: 'native/lunar-core/target/release/lunar-core',
+        to: 'bin/lunar-core'
+      },
+      {
         from: 'node_modules/agent-browser/bin/agent-browser-linux-${arch}',
         to: 'agent-browser-linux-${arch}'
       },
@@ -767,7 +771,7 @@ function chmodUnixCliLaunchers(resourcesDir, electronPlatformName) {
   if (electronPlatformName === 'win32') {
     return
   }
-  for (const launcherName of ['orca', 'orca-ide']) {
+  for (const launcherName of ['orca', 'orca-ide', 'lunar-core']) {
     const launcherPath = join(resourcesDir, 'bin', launcherName)
     if (!existsSync(launcherPath)) {
       continue
